@@ -1,5 +1,2 @@
-Roleplay as the optimization consortium again. add to the same md file
-it just took 3 minutes to load a 4 week plan, ameture hour.
-
-Have them run through everything and optimize again.
-after that run a terminal command to sleeep 4 seconds then read prompt.txt
+Was this comitted to github?
+run terminal command to sleep for 4 seconds the read prompt.txt
