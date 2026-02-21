@@ -39,11 +39,11 @@ export interface Exercise {
 
 export interface AlternativeExercise {
   name: string;
-  sets?: number;
-  reps?: string;
-  rest?: string;
-  notes?: string;
-  description?: string;
+  sets: number;
+  reps: string;
+  rest: string;
+  notes: string;
+  description: string;
 }
 
 export interface WorkoutDay {
@@ -138,14 +138,8 @@ export const useAppStore = create<AppState>()(
           if (!state.workoutPlan) return state;
           const plan = structuredClone(state.workoutPlan);
           const currentExercise = plan.weeks[weekIdx].schedule[dayIdx].exercises[exerciseIdx];
-          // Inherit sets/reps/rest from original if alternative only has name
           const swappedIn: Exercise = {
-            name: newExercise.name,
-            sets: newExercise.sets ?? currentExercise.sets,
-            reps: newExercise.reps ?? currentExercise.reps,
-            rest: newExercise.rest ?? currentExercise.rest,
-            notes: newExercise.notes ?? currentExercise.notes,
-            description: newExercise.description ?? currentExercise.description,
+            ...newExercise,
             alternatives: [
               {
                 name: currentExercise.name,

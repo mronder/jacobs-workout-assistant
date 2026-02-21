@@ -90,14 +90,7 @@ export function PlanDisplay() {
 
   const totalWorkouts = workoutPlan.weeks.reduce(
     (acc, week) =>
-      acc +
-      week.schedule.filter(
-        (d) =>
-          !d.focus.toLowerCase().includes('rest') &&
-          !d.focus.toLowerCase().includes('recovery') &&
-          d.exercises &&
-          d.exercises.length > 0
-      ).length,
+      acc + week.schedule.filter((d) => !d.focus.toLowerCase().includes('rest')).length,
     0
   );
 
@@ -206,9 +199,7 @@ export function PlanDisplay() {
             {activeWeek.schedule.map((day, idx) => {
               const dayIsRest =
                 day.focus.toLowerCase().includes('rest') ||
-                day.focus.toLowerCase().includes('recovery') ||
-                !day.exercises ||
-                day.exercises.length === 0;
+                day.focus.toLowerCase().includes('recovery');
               return (
                 <button
                   key={idx}
@@ -351,7 +342,7 @@ export function PlanDisplay() {
                                       >
                                         <div className="font-medium">{alt.name}</div>
                                         <div className="text-[10px] text-surface-500">
-                                          {alt.sets ?? ex.sets} × {alt.reps ?? ex.reps}
+                                          {alt.sets} × {alt.reps}
                                         </div>
                                       </button>
                                     ))}

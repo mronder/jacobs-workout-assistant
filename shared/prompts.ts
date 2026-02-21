@@ -109,7 +109,7 @@ RULES: ${minExercises}+ exercises per training day. Muscle-specific warmups (3) 
 
 JSON:
 {"weekNumber":${weekNumber},"phaseLabel":"phase","schedule":[
-{"dayName":"Day 1 — Focus","focus":"Upper Body|Lower Body|Push|Pull|Legs|Full Body","warmup":["a","b","c"],"exercises":[{"name":"X","sets":3,"reps":"8-10","rest":"90s","notes":"1 sentence","description":"1 sentence","alternatives":[{"name":"Alt Name"}]}],"cooldown":["a","b"]},
+{"dayName":"Day 1 — Focus","focus":"Upper Body|Lower Body|Push|Pull|Legs|Full Body","warmup":["a","b","c"],"exercises":[{"name":"X","sets":3,"reps":"8-10","rest":"90s","notes":"why","description":"how","alternatives":[{"name":"Y","sets":3,"reps":"8-10","rest":"90s","notes":"why","description":"how"}]}],"cooldown":["a","b"]},
 {"dayName":"Day N — Rest","focus":"Rest","warmup":[],"exercises":[],"cooldown":["foam rolling","light walk","mobility","stretching"]}
 ]}
 
