@@ -6,16 +6,19 @@
 [build.environment]
   NODE_VERSION = "20"
 
-# Redirect API calls to Netlify Functions
+# Redirect API calls to Netlify Functions (force=true so they never
+# fall through to the SPA catch-all)
 [[redirects]]
   from = "/api/generate-meta"
   to = "/.netlify/functions/generate-meta"
   status = 200
+  force = true
 
 [[redirects]]
   from = "/api/generate-week"
   to = "/.netlify/functions/generate-week"
   status = 200
+  force = true
 
 # SPA fallback — all other routes serve index.html
 [[redirects]]

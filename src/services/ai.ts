@@ -1,6 +1,12 @@
 import type { UserProfile, WorkoutPlan, WorkoutWeek } from '../store/useAppStore';
 
-const API_BASE = '/api';
+/**
+ * In development the Vite plugin serves /api/*. In production Netlify
+ * Functions are at /.netlify/functions/*. Using direct function URLs in
+ * production avoids reliance on redirect rules that can silently fall
+ * through to the SPA catch-all (returning index.html instead of JSON).
+ */
+const API_BASE = import.meta.env.DEV ? '/api' : '/.netlify/functions';
 
 /**
  * Generate workout plan week-by-week to avoid token truncation.
@@ -81,6 +87,12 @@ async function fetchWithRetry<T>(url: string, body: unknown, maxRetries = 2): Pr
         throw new Error(data.error || `Server error (${res.status})`);
       }
 
+      // Detect HTML responses (SPA fallback served index.html instead of function)
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('text/html')) {
+        throw new Error('API endpoint returned HTML. The serverless function may not be deployed correctly.');
+      }
+
       return (await res.json()) as T;
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
@@ -126,10 +138,17 @@ async function fetchWeekWithRetry(url: string, body: unknown, maxRetries = 2): P
         throw new Error('Empty response from AI');
       }
 
+      // Detect HTML responses (indicates SPA fallback served index.html)
+      if (text.trimStart().startsWith('<!') || text.trimStart().startsWith('<html')) {
+        throw new Error('API endpoint returned HTML instead of JSON. The serverless function may not be deployed correctly.');
+      }
+
       try {
         return JSON.parse(text) as WorkoutWeek;
       } catch {
-        throw new Error('AI returned invalid JSON. Please try again.');
+        // Include a preview of the text for debugging
+        const preview = text.length > 120 ? text.slice(0, 120) + '…' : text;
+        throw new Error(`AI returned invalid JSON: "${preview}"`);
       }
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
