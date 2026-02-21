@@ -60,48 +60,100 @@ export async function generateWorkoutPlan(
 }
 
 /**
- * Ensure exactly 7 days in the schedule.
- * If AI returned fewer, pad with rest days. If more, trim excess rest days.
+ * Enforce exactly 7 days with the correct training-to-rest ratio.
+ *
+ * Step 1: Classify each day as training or rest.
+ *         - Any day with "rest" or "recovery" in its focus AND empty/no exercises → rest
+ *         - Any day with "rest" or "recovery" in focus BUT with exercises → strip exercises, make it rest
+ *         - Anything else with exercises → training
+ *
+ * Step 2: Ensure exactly targetTrainingDays training days.
+ *         If too many: convert excess training days (from the end) to rest.
+ *         If too few: can't add training (no exercises), but this is rare with the prompt.
+ *
+ * Step 3: Pad or trim to exactly 7 total.
  */
 function enforceSevenDays(week: WorkoutWeek, targetTrainingDays: number): WorkoutWeek {
-  const schedule = [...week.schedule];
+  // Step 1: Classify and clean up
+  const classified = (week.schedule || []).map((day) => {
+    const focus = (day.focus || '').toLowerCase();
+    const isRecoveryLabel = focus.includes('rest') || focus.includes('recovery');
 
-  // Pad to 7 if under
-  while (schedule.length < 7) {
-    const dayNum = schedule.length + 1;
-    schedule.push(createRestDay(dayNum));
-  }
-
-  // Trim to 7 if over — remove extra rest days first, then excess training days
-  if (schedule.length > 7) {
-    // Separate training and rest days
-    const training = schedule.filter((d) => !isRestDay(d));
-    const rest = schedule.filter((d) => isRestDay(d));
-
-    // Keep exactly targetTrainingDays training + fill rest to 7
-    const kept = training.slice(0, targetTrainingDays);
-    const restNeeded = 7 - kept.length;
-    const keptRest = rest.slice(0, restNeeded);
-
-    // Fill any remaining gap
-    while (kept.length + keptRest.length < 7) {
-      keptRest.push(createRestDay(kept.length + keptRest.length + 1));
+    if (isRecoveryLabel) {
+      // Force to proper rest day — move any exercises to cooldown activities
+      return {
+        ...day,
+        focus: 'Rest',
+        warmup: [],
+        exercises: [],
+        cooldown: day.cooldown?.length
+          ? day.cooldown
+          : ['Foam rolling (10 min)', 'Light walk (20 min)', 'Mobility flow (5 min)', 'Full body stretching (10 min)'],
+      };
     }
 
-    // Interleave: alternate training and rest logically
-    const merged = [...kept, ...keptRest].slice(0, 7);
-    // Re-number days
-    merged.forEach((d, idx) => {
-      d.dayName = d.dayName.replace(/Day \d+/, `Day ${idx + 1}`);
-    });
-    return { ...week, schedule: merged };
+    return day;
+  });
+
+  // Step 2: Split into training and rest
+  const training: WorkoutDay[] = [];
+  const rest: WorkoutDay[] = [];
+
+  for (const day of classified) {
+    if (day.exercises && day.exercises.length > 0) {
+      training.push(day);
+    } else {
+      rest.push(day);
+    }
   }
 
-  return { ...week, schedule };
+  // Trim excess training days if we have too many
+  while (training.length > targetTrainingDays) {
+    const removed = training.pop()!;
+    rest.push({
+      ...removed,
+      focus: 'Rest',
+      warmup: [],
+      exercises: [],
+      cooldown: ['Foam rolling (10 min)', 'Light walk (20 min)', 'Mobility flow (5 min)', 'Stretching (10 min)'],
+    });
+  }
+
+  // Step 3: Build final 7-day schedule
+  const restNeeded = 7 - training.length;
+
+  // Pad rest days if needed
+  while (rest.length < restNeeded) {
+    rest.push(createRestDay(0));
+  }
+
+  // Interleave training and rest days naturally
+  const final: WorkoutDay[] = [];
+  let tIdx = 0;
+  let rIdx = 0;
+
+  for (let d = 0; d < 7; d++) {
+    if (tIdx < training.length && (rIdx >= restNeeded || d % Math.ceil(7 / targetTrainingDays) !== Math.ceil(7 / targetTrainingDays) - 1)) {
+      final.push(training[tIdx++]);
+    } else if (rIdx < restNeeded) {
+      final.push(rest[rIdx++]);
+    } else if (tIdx < training.length) {
+      final.push(training[tIdx++]);
+    } else {
+      final.push(createRestDay(d + 1));
+    }
+  }
+
+  // Re-number days
+  final.forEach((d, idx) => {
+    d.dayName = d.dayName.replace(/Day \d+/, `Day ${idx + 1}`);
+  });
+
+  return { ...week, schedule: final };
 }
 
 function isRestDay(day: WorkoutDay): boolean {
-  const focus = day.focus.toLowerCase();
+  const focus = (day.focus || '').toLowerCase();
   return focus.includes('rest') || focus.includes('recovery') || !day.exercises || day.exercises.length === 0;
 }
 
