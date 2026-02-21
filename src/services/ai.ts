@@ -28,7 +28,8 @@ export async function generateWorkoutPlan(
     const weekNumber = i + 1;
     return fetchWeekWithRetry(
       `${API_BASE}/generate-week`,
-      { profile, weekNumber, totalWeeks }
+      { profile, weekNumber, totalWeeks },
+      profile.daysPerWeek
     ).then((weekData) => {
       // Report progress as each week completes
       onPhaseChange?.(`Week ${weekNumber} complete`, { current: weekNumber, total: totalWeeks });
@@ -160,9 +161,15 @@ async function fetchWithRetry<T>(url: string, body: unknown, maxRetries = 2): Pr
 
 /**
  * Fetch a workout week, supporting both streaming and regular JSON responses.
+ * Validates the training day count matches the target.
  * Retries up to 2 times with exponential backoff.
  */
-async function fetchWeekWithRetry(url: string, body: unknown, maxRetries = 2): Promise<WorkoutWeek> {
+async function fetchWeekWithRetry(
+  url: string,
+  body: unknown,
+  expectedTrainingDays: number,
+  maxRetries = 2
+): Promise<WorkoutWeek> {
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -192,12 +199,25 @@ async function fetchWeekWithRetry(url: string, body: unknown, maxRetries = 2): P
         throw new Error('API endpoint returned HTML instead of JSON.');
       }
 
+      let weekData: WorkoutWeek;
       try {
-        return JSON.parse(text) as WorkoutWeek;
+        weekData = JSON.parse(text) as WorkoutWeek;
       } catch {
         const preview = text.length > 120 ? text.slice(0, 120) + '…' : text;
         throw new Error(`AI returned invalid JSON: "${preview}"`);
       }
+
+      // Validate training day count — retry if AI returned wrong count
+      if (weekData.schedule && Array.isArray(weekData.schedule)) {
+        const trainingDays = weekData.schedule.filter((d) => !isRestDay(d)).length;
+        if (trainingDays < expectedTrainingDays && attempt < maxRetries) {
+          throw new Error(
+            `Expected ${expectedTrainingDays} training days but got ${trainingDays}. Retrying...`
+          );
+        }
+      }
+
+      return weekData;
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
       if (attempt === maxRetries) break;

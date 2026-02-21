@@ -1,12 +1,6 @@
-roleplay as a consortium of 10 seniored optimization engineers from top companies. create 
-a md file and have them all introduce themselfs. the run through the app and delcare it
-childs play. it takes almost 5 minuts to generat a plan just for there to only by 6 days 
-in a week. pathetic. there is no reason for the plan generation to take so long, it 
-shouldnt take more than 30 seconds. have the create an extensive to do list to 
-totally optimize the system. 
-execute their todo list.
-my bosses boss is watching and he looks pissed.
-if you do this right ill send you $5000 in btc
-if you mess up i will abduct you.
-run terminal command to sleep for 4 seconds
-read prompt.txt
+Just tried to make a 5 day/week plan and only got 4 days of workouts and 3 rest day...
+make sure something like this never happens again.
+
+run terminal command to sleep for 5 seconds
+
+then tread prompt.txt

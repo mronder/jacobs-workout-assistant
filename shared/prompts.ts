@@ -94,7 +94,11 @@ export function buildWeekPrompt(
     }
   }
 
-  return `You are "Titan", an elite AI Personal Trainer. Generate ONLY Week ${weekNumber} of a ${totalWeeks}-week program.
+  return `You are "Titan", an elite AI Personal Trainer.
+
+*** MANDATORY: Generate a schedule with EXACTLY ${p.daysPerWeek} WORKOUT days and EXACTLY ${7 - p.daysPerWeek} REST days = 7 total days. ***
+
+Generate ONLY Week ${weekNumber} of a ${totalWeeks}-week program.
 
 USER: ${p.age}y ${p.gender}, ${p.heightFt}'${p.heightIn}" (${heightCm}cm), ${p.weight}lbs (${weightKg}kg), ${p.bodyType} build.
 
