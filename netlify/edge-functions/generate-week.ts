@@ -6,15 +6,22 @@ import type { UserProfile } from '../../shared/prompts.ts';
  * Netlify Edge Function — single workout week generation.
  * Non-streaming for lower latency (50s timeout is plenty).
  */
+
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
 export default async (request: Request) => {
   if (request.method === 'OPTIONS') {
-    return new Response(null, { status: 204 });
+    return new Response(null, { status: 204, headers: CORS });
   }
 
   if (request.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...CORS },
     });
   }
 
@@ -29,7 +36,7 @@ export default async (request: Request) => {
   } catch {
     return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
       status: 400,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...CORS },
     });
   }
 
@@ -39,7 +46,7 @@ export default async (request: Request) => {
   if (!apiKey) {
     return new Response(JSON.stringify({ error: 'OPENAI_API_KEY not configured' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...CORS },
     });
   }
 
@@ -69,14 +76,14 @@ export default async (request: Request) => {
 
     return new Response(JSON.stringify(weekData), {
       status: 200,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...CORS },
     });
   } catch (err: unknown) {
     console.error(`[Titan] generate-week ${weekNumber} error:`, err);
     const message = err instanceof Error ? err.message : 'Unknown error';
     return new Response(
       JSON.stringify({ error: `AI generation failed: ${message}` }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      { status: 500, headers: { 'Content-Type': 'application/json', ...CORS } }
     );
   }
 };
