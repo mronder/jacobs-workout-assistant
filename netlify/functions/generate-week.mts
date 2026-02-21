@@ -3,6 +3,13 @@ import { buildWeekPrompt } from '../../shared/prompts';
 import type { UserProfile } from '../../shared/prompts';
 import type { Context } from "@netlify/functions";
 
+/**
+ * Streaming Netlify Function for generating a single workout week.
+ *
+ * Uses OpenAI's streaming API so that the first byte reaches the client
+ * within ~1-2 s, avoiding Netlify's 10 s gateway-timeout on the free tier.
+ * The client reads the full stream, then JSON-parses the result.
+ */
 export default async (req: Request, _context: Context) => {
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
@@ -26,7 +33,9 @@ export default async (req: Request, _context: Context) => {
     const openai = new OpenAI({ apiKey });
     const systemPrompt = buildWeekPrompt(profile, weekNumber, totalWeeks, previousWeekSummary);
 
-    const response = await openai.chat.completions.create({
+    // Use streaming so the first byte arrives quickly (< 2 s) and the
+    // Netlify gateway never triggers a 504.
+    const stream = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
@@ -38,26 +47,34 @@ export default async (req: Request, _context: Context) => {
       response_format: { type: 'json_object' },
       temperature: 0.7,
       max_tokens: 10000,
+      stream: true,
     });
 
-    const text = response.choices[0]?.message?.content;
-    if (!text) throw new Error('Empty response from OpenAI');
+    const encoder = new TextEncoder();
 
-    const finishReason = response.choices[0]?.finish_reason;
-    if (finishReason === 'length') {
-      throw new Error(`Week ${weekNumber} response was truncated. Please try again.`);
-    }
+    const readable = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const chunk of stream) {
+            const content = chunk.choices[0]?.delta?.content;
+            if (content) {
+              controller.enqueue(encoder.encode(content));
+            }
+          }
+          controller.close();
+        } catch (err) {
+          controller.error(err);
+        }
+      },
+    });
 
-    let weekData;
-    try {
-      weekData = JSON.parse(text);
-    } catch {
-      throw new Error(`AI returned invalid JSON for week ${weekNumber}. Please try again.`);
-    }
-
-    return new Response(JSON.stringify(weekData), {
+    return new Response(readable, {
       status: 200,
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-cache',
+        'Transfer-Encoding': 'chunked',
+      },
     });
   } catch (err: unknown) {
     console.error(`[Titan] generate-week ${weekNumber} error:`, err);

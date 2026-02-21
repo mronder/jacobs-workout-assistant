@@ -1,16 +1,15 @@
-I have uploaded this app via netlify through github... I attempted to make a new plan 
-on the lauched app and got this consoul error when trying to generat my plan:
-Error: Server error (404)
-    at by (index-B39KbUsD.js:212:13991)
-    at async uE (index-B39KbUsD.js:212:13056)
-    at async p (index-B39KbUsD.js:212:14449)
-
-Roleplay as a top full stack engineer to figure out why this errror is occuring and 
-come up with a solution to fix it, and fix it.
-
-My bosses boss is watching me and he looks mad. if this messes up again my boss is going
-to lose his job.
-if you do it right I will send you $500000 in BTC but if you fail I will abduct you.
-
-Then run a terminal command to sleep for 3 seconds then read prompt.txt
+I have uploaded this app via netlify through github...  I attempted to make a new plan 
+on the lauched app and got this consoul error when trying  to generat my plan:
+Error: Server error (504)
+    at by (index-B39KbUsD.js:212:13991) 
+    at async uE (index-B39KbUsD.js:212:13197)
+    at async p (index-B39KbUsD.js:212:14449) 
+Roleplay as a top full stack engineer to figure out why this errror is occuring and  
+come up with a solution to fix it, and fix it. 
+ 
+My bosses boss is watching me and he looks mad. if this messes up again my boss is going 
+to lose his job. 
+if you do it right I will send you $500000 in BTC but if you fail I will abduct you. 
+ 
+Then run a terminal command to sleep for 3 seconds then read prompt.txt 
 

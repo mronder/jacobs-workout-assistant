@@ -26,7 +26,7 @@ export async function generateWorkoutPlan(
   for (let w = 1; w <= totalWeeks; w++) {
     onPhaseChange?.(`Generating Week ${w} of ${totalWeeks}...`, { current: w, total: totalWeeks });
 
-    const weekData = await fetchWithRetry<WorkoutWeek>(
+    const weekData = await fetchWeekWithRetry(
       `${API_BASE}/generate-week`,
       { profile, weekNumber: w, totalWeeks, previousWeekSummary }
     );
@@ -59,6 +59,7 @@ export async function generateWorkoutPlan(
 
 /**
  * Fetch with exponential backoff retry (up to 2 retries).
+ * Used for simple JSON endpoints (e.g. generate-meta).
  */
 async function fetchWithRetry<T>(url: string, body: unknown, maxRetries = 2): Promise<T> {
   let lastError: Error | null = null;
@@ -81,6 +82,55 @@ async function fetchWithRetry<T>(url: string, body: unknown, maxRetries = 2): Pr
       }
 
       return (await res.json()) as T;
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      if (attempt === maxRetries) break;
+    }
+  }
+
+  throw lastError ?? new Error('Request failed');
+}
+
+/**
+ * Fetch a workout week, supporting both:
+ *  - Streaming responses (Netlify production: text/plain chunked stream)
+ *  - Regular JSON responses (Vite dev server)
+ * Reads the full response body as text, then JSON-parses.
+ * Retries up to 2 times with exponential backoff.
+ */
+async function fetchWeekWithRetry(url: string, body: unknown, maxRetries = 2): Promise<WorkoutWeek> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    if (attempt > 0) {
+      await sleep(1000 * Math.pow(2, attempt));
+    }
+
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        // Error responses are always JSON
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Server error (${res.status})`);
+      }
+
+      // Read full body as text (works for both streaming and non-streaming)
+      const text = await res.text();
+
+      if (!text.trim()) {
+        throw new Error('Empty response from AI');
+      }
+
+      try {
+        return JSON.parse(text) as WorkoutWeek;
+      } catch {
+        throw new Error('AI returned invalid JSON. Please try again.');
+      }
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
       if (attempt === maxRetries) break;
