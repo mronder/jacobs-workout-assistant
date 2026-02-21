@@ -229,13 +229,13 @@ PHASE: ${phaseLabel}
 ${previousWeekSummary ? `PREVIOUS WEEK: ${previousWeekSummary}` : ''}
 
 CRITICAL RULES:
-1. Training days MUST have at least ${minExercises} exercises. Fill the ${p.workoutDuration}-minute session.
-2. ${warmupNote}
-3. Cooldowns MUST target the muscles worked (after chest = pec stretch, thoracic rotation; after legs = quad stretch, hip flexor stretch).
-4. REST/RECOVERY days: Include 3-5 activities (foam rolling specific areas, mobility flow, light cardio option, stretching routine). NOT just "walking."
-5. Every exercise note MUST reference why it's chosen for THIS user's goal and experience level.
-6. Each exercise needs 1 alternative exercise (with full details).
-7. Schedule MUST have exactly 7 days (Day 1 through Day 7).
+1. EXACTLY ${p.daysPerWeek} TRAINING days with real exercises (at least ${minExercises} exercises each, ${p.workoutDuration}min sessions). "Active Recovery" does NOT count as a training day.
+2. EXACTLY ${7 - p.daysPerWeek} REST/ACTIVE RECOVERY days (no gym exercises, only recovery activities like foam rolling, mobility, light walking, stretching, yoga — provide 3-5 suggestions per rest day).
+3. Total MUST be exactly 7 days (${p.daysPerWeek} training + ${7 - p.daysPerWeek} rest = 7).
+4. ${warmupNote}
+5. Cooldowns MUST target the muscles worked (after chest = pec stretch, thoracic rotation; after legs = quad stretch, hip flexor stretch).
+6. Every exercise note MUST reference why it's chosen for THIS user's goal and experience level.
+7. Each exercise needs 1 alternative exercise (with full details).
 8. Sets/reps MUST change from week to week (this is week ${weekNumber}). Show progressive overload.
 
 OUTPUT — Return ONLY this JSON:
@@ -245,7 +245,7 @@ OUTPUT — Return ONLY this JSON:
   "schedule": [
     {
       "dayName": "Day 1 — <Focus>",
-      "focus": "Upper Body | Lower Body | Push | Pull | Legs | Full Body | Rest | Active Recovery",
+      "focus": "Upper Body|Lower Body|Push|Pull|Legs|Full Body",
       "warmup": ["specific warmup 1", "specific warmup 2", "specific warmup 3"],
       "exercises": [
         {
@@ -261,7 +261,16 @@ OUTPUT — Return ONLY this JSON:
         }
       ],
       "cooldown": ["targeted stretch 1", "targeted stretch 2", "foam rolling focus area"]
+    },
+    {
+      "dayName": "Day X — Active Recovery",
+      "focus": "Rest",
+      "warmup": [],
+      "exercises": [],
+      "cooldown": ["foam rolling", "light walk 20 min", "hip mobility flow", "full body stretching"]
     }
   ]
-}`;
+}
+
+CRITICAL: The schedule array must have exactly ${p.daysPerWeek} training days (with exercises) and ${7 - p.daysPerWeek} rest days (focus="Rest", exercises=[]). Total = 7 days.`;
 }

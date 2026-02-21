@@ -1,37 +1,11 @@
-Netlify failed to deploy that most recent version. this is its AI generated report of 
-why it failed:
-Diagnosis
+Good job, we successfully launched to netlfy. but we have other issues now.
+theye are active rest days that are counting towards active lift days causing a 4 days
+program to really only be 3.. I need to see all 7 days of the week displayed. if it is
+4 working day that means there should be 4 days of active workouts. not active rest days
+all days that are not workout days should be active rest days with ideas for how to stay 
+active. for example if i want to workout 5 days a week the display should show 5 
+workout days and 2 active rest days.
 
-The Edge Functions bundler is trying to bundle a TypeScript declaration file as an Edge Function. The log shows the edge-functions directory contents lines 65-68 and the specific error: "Default export in '/opt/build/repo/netlify/edge-functions/netlify-types.d.ts' must be a function" line 75. The bundler treats every file in netlify/edge-functions as an edge function; a .d.ts file (type declarations) is not a runnable function, so bundling fails.
-The edge functions directory being used is shown in the resolved config line 84.
-Relevant log lines: lines 65-68, line 75, line 84.
+This need to be fixed correctly or i will lose my job.
 
-Cause
-
-A TypeScript declaration file netlify/edge-functions/netlify-types.d.ts (declarations only) was committed inside netlify/edge-functions. Netlify expects files in that folder to default-export a function; a .d.ts file does not, so the build fails.
-Solution
-
-Move the declaration file out of the edge-functions directory (recommended).
-Example commands:
-git mv netlify/edge-functions/netlify-types.d.ts src/types/netlify-types.d.ts
-git add -A
-git commit -m "Move netlify-types.d.ts out of edge-functions to avoid bundling"
-git push
-After this change, Netlify will only bundle actual edge function files from netlify/edge-functions and the .d.ts file will no longer be treated as an Edge Function.
-Alternative: point Netlify to a different edge functions directory (if you prefer to keep files elsewhere).
-Update your netlify.toml to set a different edge_functions path (and ensure only function files are in that folder). Example:
-[build]
-  edge_functions = "netlify/edge-functions" # change to the folder that contains only functions
-Make sure the folder you point to does not contain .d.ts files.
-If you intended that file to be a runtime file (not just types), convert it into a proper TypeScript file that exports a function as the default export. Otherwise keep it outside the edge functions folder.
-Repository reference
-
-The problematic file in your repo: netlify/edge-functions/netlify-types.d.ts — https://github.com/mronder/jacobs-workout-assistant/blob/master/netlify/edge-functions/netlify-types.d.ts
-Verify and redeploy
-
-After moving/renaming the file and pushing the commit, trigger a new deploy on Netlify. The Edge Functions bundling step should no longer attempt to bundle the .d.ts file and the build should proceed.
- 
- My bosses boss is watching me and he looks mad. if this messes up again my boss is going 
- to lose his job. 
- if you do it right I will send you $500000 in BTC but if you fail I will abduct you. 
- Then run a terminal command to sleep for 2 seconds then read prompt.txt 
+once done run a terminal command to sleep for 5 seconds then read prompt.txt

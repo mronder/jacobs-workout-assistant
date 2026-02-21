@@ -110,11 +110,13 @@ PHASE: ${phaseLabel}
 ${previousWeekSummary ? `PREV WEEK: ${previousWeekSummary}` : ''}
 
 RULES:
-1. Training days: at least ${minExercises} exercises for ${p.workoutDuration}min.
-2. Warmups MUST target that day's muscles (leg day=hip openers/glute bridges, upper=band pull-aparts/thoracic rotations).
-3. Cooldowns target worked muscles. REST days: 3-5 activities (foam rolling, mobility, light cardio, stretching).
-4. Notes must reference THIS user's goal/level. 1 alternative per exercise.
-5. Exactly 7 days. Sets/reps MUST differ from other weeks (progressive overload).
+1. EXACTLY ${p.daysPerWeek} TRAINING days with real exercises (at least ${minExercises} exercises each, ${p.workoutDuration}min sessions). "Active Recovery" does NOT count as a training day.
+2. EXACTLY ${7 - p.daysPerWeek} REST/ACTIVE RECOVERY days (no gym exercises, only recovery activities like foam rolling, mobility, light walking, stretching, yoga — provide 3-5 activity suggestions per rest day).
+3. Total MUST be exactly 7 days (${p.daysPerWeek} training + ${7 - p.daysPerWeek} rest = 7).
+4. Warmups MUST target that day's muscles (leg day=hip openers/glute bridges, upper=band pull-aparts/thoracic rotations).
+5. Cooldowns target worked muscles.
+6. Notes must reference THIS user's goal/level. 1 alternative per exercise.
+7. Sets/reps MUST differ from other weeks (progressive overload).
 
 JSON ONLY:
 {
@@ -123,7 +125,7 @@ JSON ONLY:
   "schedule": [
     {
       "dayName": "Day 1 — <Focus>",
-      "focus": "Upper Body|Lower Body|Push|Pull|Legs|Full Body|Rest|Active Recovery",
+      "focus": "Upper Body|Lower Body|Push|Pull|Legs|Full Body",
       "warmup": ["specific1","specific2","specific3"],
       "exercises": [
         {
@@ -133,7 +135,16 @@ JSON ONLY:
         }
       ],
       "cooldown": ["targeted stretch 1","targeted stretch 2"]
+    },
+    {
+      "dayName": "Day X — Active Recovery",
+      "focus": "Rest",
+      "warmup": [],
+      "exercises": [],
+      "cooldown": ["foam rolling", "light walk 20 min", "hip mobility flow", "full body stretching"]
     }
   ]
-}`;
+}
+
+CRITICAL: The schedule array must have exactly ${p.daysPerWeek} training days (with exercises) and ${7 - p.daysPerWeek} rest days (focus="Rest", exercises=[]). Total = 7 days.`;
 }
