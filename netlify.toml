@@ -1,26 +1,15 @@
 [build]
   command = "npm run build"
   publish = "dist"
-  functions = "netlify/functions"
 
 [build.environment]
   NODE_VERSION = "20"
 
-# Redirect API calls to Netlify Functions (force=true so they never
-# fall through to the SPA catch-all)
-[[redirects]]
-  from = "/api/generate-meta"
-  to = "/.netlify/functions/generate-meta"
-  status = 200
-  force = true
+# Edge Functions handle /api/* routes (configured via export const config in each file).
+# Edge Functions have a 50-second timeout — enough for OpenAI streaming responses.
+# No redirects needed for /api/* since Edge Functions intercept them directly.
 
-[[redirects]]
-  from = "/api/generate-week"
-  to = "/.netlify/functions/generate-week"
-  status = 200
-  force = true
-
-# SPA fallback — all other routes serve index.html
+# SPA fallback — all non-API routes serve index.html for client-side routing
 [[redirects]]
   from = "/*"
   to = "/index.html"

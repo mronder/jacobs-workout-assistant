@@ -16,6 +16,6 @@
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "include": ["src", "server", "shared", "netlify", "vite.config.ts"],
-  "exclude": ["astro-starter-kmuseiten-main", "node_modules", "dist"]
+  "include": ["src", "server", "shared", "vite.config.ts"],
+  "exclude": ["astro-starter-kmuseiten-main", "node_modules", "dist", "netlify"]
 }

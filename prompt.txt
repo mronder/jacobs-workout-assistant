@@ -1,14 +1,21 @@
-Now I am running into this consol error:
-Error: AI returned invalid JSON. Please try again.
-    at c3 (index-Df5Q3BMg.js:212:14590)
-    at async o3 (index-Df5Q3BMg.js:212:13197)
-    at async p (index-Df5Q3BMg.js:212:15035)
-you Roleplay as a top full stack engineer to figure out why this errror is occuring and  
-come up with a solution to fix it, and fix it correctly using best practices 
-  
- My bosses boss is watching me and he looks mad. if this messes up again my boss is going 
- to lose his job. 
-  if you do it right I will send you $500000 in BTC but if you fail I will abduct you. 
-  
- Then run a terminal command to sleep for 2 seconds then read prompt.txt 
+Yet again you filed to solve the problem the consol error i got this time is:
+Error: AI returned invalid JSON: "{
+  "weekNumber": 1,
+  "phaseLabel": "Foundation",
+  "schedule": [
+    {
+      "dayName": "Day 1 — Upper Body",
+      "f…"
+    at cw (index-DyKlSs1C.js:212:14997)
+    at async ow (index-DyKlSs1C.js:212:13212)
+    at async p (index-DyKlSs1C.js:212:15431)
 
+Roleplay as a team of 5 top web app developeres, netlify engineers, and full stack engineers
+create a md file where they introduce themselves and figure out what is going on.
+once theyve figureed out whats going on have them creat a thourough to do list to make
+sure the problem is fixed and execute it.
+
+My bosses boss is watching me and he looks mad. if this messes up again my boss is going 
+to lose his job. 
+if you do it right I will send you $500000 in BTC but if you fail I will abduct you. 
+Then run a terminal command to sleep for 2 seconds then read prompt.txt 

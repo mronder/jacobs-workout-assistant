@@ -1,12 +1,10 @@
 import type { UserProfile, WorkoutPlan, WorkoutWeek } from '../store/useAppStore';
 
 /**
- * In development the Vite plugin serves /api/*. In production Netlify
- * Functions are at /.netlify/functions/*. Using direct function URLs in
- * production avoids reliance on redirect rules that can silently fall
- * through to the SPA catch-all (returning index.html instead of JSON).
+ * API base path — same in dev (Vite plugin) and production (Netlify Edge Functions).
+ * Edge Functions intercept /api/* directly, so no environment-specific URLs needed.
  */
-const API_BASE = import.meta.env.DEV ? '/api' : '/.netlify/functions';
+const API_BASE = '/api';
 
 /**
  * Generate workout plan week-by-week to avoid token truncation.
