@@ -62,7 +62,7 @@ export default async (request: Request) => {
       ],
       response_format: { type: 'json_object' },
       temperature: 0.7,
-      max_tokens: 10000,
+      max_tokens: 6000,
       stream: true,
     });
 

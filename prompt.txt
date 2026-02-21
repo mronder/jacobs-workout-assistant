@@ -1,11 +1,12 @@
-Good job, we successfully launched to netlfy. but we have other issues now.
-theye are active rest days that are counting towards active lift days causing a 4 days
-program to really only be 3.. I need to see all 7 days of the week displayed. if it is
-4 working day that means there should be 4 days of active workouts. not active rest days
-all days that are not workout days should be active rest days with ideas for how to stay 
-active. for example if i want to workout 5 days a week the display should show 5 
-workout days and 2 active rest days.
-
-This need to be fixed correctly or i will lose my job.
-
-once done run a terminal command to sleep for 5 seconds then read prompt.txt
+roleplay as a consortium of 10 seniored optimization engineers from top companies. create 
+a md file and have them all introduce themselfs. the run through the app and delcare it
+childs play. it takes almost 5 minuts to generat a plan just for there to only by 6 days 
+in a week. pathetic. there is no reason for the plan generation to take so long, it 
+shouldnt take more than 30 seconds. have the create an extensive to do list to 
+totally optimize the system. 
+execute their todo list.
+my bosses boss is watching and he looks pissed.
+if you do this right ill send you $5000 in btc
+if you mess up i will abduct you.
+run terminal command to sleep for 4 seconds
+read prompt.txt
