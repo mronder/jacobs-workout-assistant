@@ -1,0 +1,4 @@
+create a privat repository in github and create an inital commit.
+
+then run a terminal command to sleep for 5 seconds then read prompt.txt
+
