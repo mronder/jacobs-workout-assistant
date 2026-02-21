@@ -1,4 +1,12 @@
-create a privat repository in github and create an inital commit.
+Act as a focus group comprised of 12 physical therapists, personal trainers, excersice
+scientists, motivational experts, and daily users of the app. create an md file and
+have them introduce themselves and then discuss the app. they delcare it childs play
+they arent convinced that any of the inputs actually change the workout plans and they saw
+one day with only one workout on it. they think this is some joke we are playing on them
+have them create a comprehensive to do list of all the things they think could be better
+i then need you to execute this todo list.
 
-then run a terminal command to sleep for 5 seconds then read prompt.txt
+this is really important, my boss is watching me build this and he looks angry.
+if you do it right i will send you $5000 in btc but if you mess up i will abduct you
 
+after this run a terminal command to sleep for 2 seconds then read prompt.txt

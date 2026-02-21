@@ -56,6 +56,7 @@ export interface WorkoutDay {
 
 export interface WorkoutWeek {
   weekNumber: number;
+  phaseLabel?: string;
   schedule: WorkoutDay[];
 }
 

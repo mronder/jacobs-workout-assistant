@@ -48,7 +48,7 @@ function exportPlanAsText(plan: WPType) {
 }
 
 export function PlanDisplay() {
-  const { workoutPlan, reset, swapExercise } = useAppStore();
+  const { workoutPlan, userProfile, reset, swapExercise } = useAppStore();
   const [activeWeekIndex, setActiveWeekIndex] = useState(0);
   const [activeDayIndex, setActiveDayIndex] = useState(0);
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
@@ -123,6 +123,30 @@ export function PlanDisplay() {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 pt-6 space-y-6">
+        {/* ─── Personalization Banner ────────────────────── */}
+        <div className="bg-gradient-to-r from-emerald-500/[0.07] to-cyan-500/[0.05] border border-emerald-500/20 rounded-2xl p-4">
+          <div className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-2">Designed For You</div>
+          <div className="flex flex-wrap gap-2">
+            {[
+              capitalize(userProfile.goal.replace(/_/g, ' ')),
+              capitalize(userProfile.experienceLevel),
+              capitalize(userProfile.bodyType) + ' Build',
+              `${userProfile.daysPerWeek} Days/Week`,
+              `${userProfile.workoutDuration} Min Sessions`,
+              userProfile.injuries ? `⚠️ ${userProfile.injuries}` : null,
+            ]
+              .filter(Boolean)
+              .map((tag, i) => (
+                <span
+                  key={i}
+                  className="px-2.5 py-1 bg-surface-800/60 rounded-full text-[11px] font-medium text-surface-300 border border-surface-700/40"
+                >
+                  {tag}
+                </span>
+              ))}
+          </div>
+        </div>
+
         {/* ─── Stats Bar ─────────────────────────────────── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <StatCard label="Frequency" value={workoutPlan.frequency} icon={Calendar} />
@@ -149,6 +173,11 @@ export function PlanDisplay() {
               Current View
             </div>
             <div className="text-lg font-bold text-white">Week {activeWeek.weekNumber}</div>
+            {activeWeek.phaseLabel && (
+              <div className="text-[9px] text-emerald-400 font-semibold uppercase tracking-wider mt-0.5">
+                {activeWeek.phaseLabel}
+              </div>
+            )}
           </div>
           <button
             onClick={() => {
@@ -215,7 +244,7 @@ export function PlanDisplay() {
                 </span>
               </div>
 
-              {isRestDay && activeDay.exercises.length <= 1 ? (
+              {isRestDay ? (
                 <RestDayCard day={activeDay} />
               ) : (
                 <>
@@ -527,18 +556,32 @@ function Section({
 
 function RestDayCard({ day }: { day: { exercises: Exercise[]; focus: string } }) {
   return (
-    <div className="flex flex-col items-center justify-center py-10 text-center space-y-3">
+    <div className="flex flex-col items-center justify-center py-8 text-center space-y-4">
       <div className="w-14 h-14 rounded-full bg-surface-800 flex items-center justify-center">
         <RefreshCcw className="text-surface-500" size={28} />
       </div>
       <h3 className="text-lg font-semibold text-white">{day.focus}</h3>
-      <p className="text-surface-400 text-sm max-w-md">
-        {day.exercises[0]?.name ||
-          'Take it easy today. Light walking, stretching, or mobility work helps your body recover and grow.'}
-      </p>
-      {day.exercises[0]?.notes && (
-        <p className="text-surface-500 text-xs italic max-w-sm">"{day.exercises[0].notes}"</p>
+      {day.exercises.length > 0 ? (
+        <div className="w-full max-w-md space-y-2 text-left">
+          {day.exercises.map((ex, i) => (
+            <div key={i} className="bg-surface-800/40 rounded-xl px-4 py-3 border border-surface-700/30">
+              <div className="text-sm font-medium text-white">{ex.name}</div>
+              {ex.description && <div className="text-xs text-surface-400 mt-0.5">{ex.description}</div>}
+              {ex.notes && <div className="text-[11px] text-surface-500 mt-1 italic">"{ex.notes}"</div>}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-surface-400 text-sm max-w-md">
+          Take it easy today. Light walking, stretching, or mobility work helps your body recover and grow.
+        </p>
       )}
     </div>
   );
+}
+function capitalize(s: string): string {
+  return s
+    .split(' ')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
 }
