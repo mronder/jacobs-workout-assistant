@@ -161,20 +161,20 @@ async function fetchWithRetry<T>(url: string, body: unknown, maxRetries = 2): Pr
 
 /**
  * Fetch a workout week, supporting both streaming and regular JSON responses.
- * Validates the training day count matches the target.
- * Retries up to 2 times with exponential backoff.
+ * Only retries on real failures (500, network). Day-count issues are handled
+ * client-side by enforceSevenDays() — retrying is too expensive (20-30s per call).
  */
 async function fetchWeekWithRetry(
   url: string,
   body: unknown,
-  expectedTrainingDays: number,
-  maxRetries = 2
+  _expectedTrainingDays: number,
+  maxRetries = 1
 ): Promise<WorkoutWeek> {
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     if (attempt > 0) {
-      await sleep(1000 * Math.pow(2, attempt));
+      await sleep(2000);
     }
 
     try {
@@ -199,25 +199,12 @@ async function fetchWeekWithRetry(
         throw new Error('API endpoint returned HTML instead of JSON.');
       }
 
-      let weekData: WorkoutWeek;
       try {
-        weekData = JSON.parse(text) as WorkoutWeek;
+        return JSON.parse(text) as WorkoutWeek;
       } catch {
         const preview = text.length > 120 ? text.slice(0, 120) + '…' : text;
         throw new Error(`AI returned invalid JSON: "${preview}"`);
       }
-
-      // Validate training day count — retry if AI returned wrong count
-      if (weekData.schedule && Array.isArray(weekData.schedule)) {
-        const trainingDays = weekData.schedule.filter((d) => !isRestDay(d)).length;
-        if (trainingDays < expectedTrainingDays && attempt < maxRetries) {
-          throw new Error(
-            `Expected ${expectedTrainingDays} training days but got ${trainingDays}. Retrying...`
-          );
-        }
-      }
-
-      return weekData;
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
       if (attempt === maxRetries) break;

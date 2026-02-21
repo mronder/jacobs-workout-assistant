@@ -1,6 +1,5 @@
-Just tried to make a 5 day/week plan and only got 4 days of workouts and 3 rest day...
-make sure something like this never happens again.
+Roleplay as the optimization consortium again. add to the same md file
+it just took 3 minutes to load a 4 week plan, ameture hour.
 
-run terminal command to sleep for 5 seconds
-
-then tread prompt.txt
+Have them run through everything and optimize again.
+after that run a terminal command to sleeep 4 seconds then read prompt.txt

@@ -43,7 +43,7 @@ export default async (request: Request) => {
         { role: 'user', content: msgs.user },
       ],
       response_format: { type: 'json_object' },
-      temperature: 0.7,
+      temperature: 0.5,
       max_tokens: 200,
     });
 

@@ -78,3 +78,36 @@ Total: ~25 seconds regardless of plan duration
 ---
 
 *"From 5 minutes to under 30 seconds. That's a 10x improvement. You're welcome."* — Dr. Wei Zhang
+
+---
+
+## Round 2 — Still 3 Minutes? Unacceptable.
+
+### Dr. Wei Zhang
+*"We parallelized the calls but forgot to account for the retry cost. The training-day validation was triggering retries — each one a FULL 25-second API call with exponential backoff. On a 4-week plan with each week retrying twice, that's 4 × 75s = the slowest week at ~75s. Parallel doesn't help when individual calls are 75 seconds."*
+
+### Natasha Reeves
+*"The system prompt is a novel. I counted ~1,500 input tokens. At prompt processing speed, that's 2-3 seconds of latency before the FIRST output token. And we send it 5 times in parallel. Compress it to 800 tokens."*
+
+### Carlos Mendez
+*"5 parallel requests hitting the same API means 5 DNS lookups, 5 TLS handshakes. Each adds 200-400ms. That's 1-2 seconds of overhead per request."*
+
+### Ahmed Hassan
+*"max_tokens: 6000 for a response that's 3000-4500 tokens. The model pre-allocates KV cache for the full max_tokens window. Reduce to 4500 — tighter budget, faster inference."*
+
+### Round 2 Fixes Applied
+
+| # | Fix | Time Saved |
+|---|-----|-----------|
+| 1 | **Removed training-day validation retry** — `enforceSevenDays()` handles it client-side for free | ~50-75s worst case |
+| 2 | **Compressed system prompt** from ~1500 tokens to ~800 tokens | ~1-2s per request |
+| 3 | **Reduced max_tokens** 6000 → 4500 | ~5-10% faster inference |
+| 4 | **Lowered temperature** 0.7 → 0.5 | ~5-10% faster (shorter sampling) |
+| 5 | **Reduced maxRetries** 2 → 1 for week calls | Max 1 retry instead of 2 |
+| 6 | **Flat 2s backoff** instead of exponential | Saves 2-4s per retry |
+
+### Expected Performance After Round 2
+```
+4-week plan: ~20-30 seconds (down from ~180s)
+8-week plan: ~25-35 seconds (all parallel, no retries)
+```

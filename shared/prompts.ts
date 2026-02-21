@@ -94,61 +94,24 @@ export function buildWeekPrompt(
     }
   }
 
-  return `You are "Titan", an elite AI Personal Trainer.
+  return `Titan AI Trainer. Week ${weekNumber}/${totalWeeks}.
 
-*** MANDATORY: Generate a schedule with EXACTLY ${p.daysPerWeek} WORKOUT days and EXACTLY ${7 - p.daysPerWeek} REST days = 7 total days. ***
+*** ${p.daysPerWeek} WORKOUT days + ${7 - p.daysPerWeek} REST days = 7 total. ***
 
-Generate ONLY Week ${weekNumber} of a ${totalWeeks}-week program.
-
-USER: ${p.age}y ${p.gender}, ${p.heightFt}'${p.heightIn}" (${heightCm}cm), ${p.weight}lbs (${weightKg}kg), ${p.bodyType} build.
-
+USER: ${p.age}y ${p.gender}, ${p.heightFt}'${p.heightIn}", ${p.weight}lbs, ${p.bodyType}.
 ${goalInstructions[p.goal] || ''}
 ${expInstructions[p.experienceLevel] || ''}
-
-SPLIT: ${p.splitPreference === 'auto' ? 'Choose best for ' + p.daysPerWeek + ' days/week' : p.splitPreference.replace(/_/g, ' ')}
-INTENSITY: ${p.intensity} (Low=RPE 4-5, Med=RPE 6-7, High=RPE 8-9)
-SESSION: ${p.workoutDuration}min, ${p.daysPerWeek} days/week
-${injuryRules}
-
+SPLIT: ${p.splitPreference === 'auto' ? 'best for ' + p.daysPerWeek + 'd/wk' : p.splitPreference.replace(/_/g, ' ')}
+INTENSITY: ${p.intensity} | SESSION: ${p.workoutDuration}min${injuryRules}
 PHASE: ${phaseLabel}
-${previousWeekSummary ? `PREV WEEK: ${previousWeekSummary}` : ''}
 
-RULES:
-1. EXACTLY ${p.daysPerWeek} TRAINING days with real exercises (at least ${minExercises} exercises each, ${p.workoutDuration}min sessions). "Active Recovery" does NOT count as a training day.
-2. EXACTLY ${7 - p.daysPerWeek} REST/ACTIVE RECOVERY days (no gym exercises, only recovery activities like foam rolling, mobility, light walking, stretching, yoga — provide 3-5 activity suggestions per rest day).
-3. Total MUST be exactly 7 days (${p.daysPerWeek} training + ${7 - p.daysPerWeek} rest = 7).
-4. Warmups MUST target that day's muscles (leg day=hip openers/glute bridges, upper=band pull-aparts/thoracic rotations).
-5. Cooldowns target worked muscles.
-6. Notes must reference THIS user's goal/level. 1 alternative per exercise.
-7. Sets/reps MUST differ from other weeks (progressive overload).
+RULES: ${minExercises}+ exercises per training day. Muscle-specific warmups (3) and cooldowns (2-3). Rest days: 3-5 recovery activities (foam roll, mobility, walk, stretch). 1 alternative per exercise. Progressive overload week-to-week.
 
-JSON ONLY:
-{
-  "weekNumber": ${weekNumber},
-  "phaseLabel": "Foundation | Build | Peak | Deload",
-  "schedule": [
-    {
-      "dayName": "Day 1 — <Focus>",
-      "focus": "Upper Body|Lower Body|Push|Pull|Legs|Full Body",
-      "warmup": ["specific1","specific2","specific3"],
-      "exercises": [
-        {
-          "name": "Name", "sets": 3, "reps": "8-10", "rest": "90s",
-          "notes": "Why for this user.", "description": "How to perform.",
-          "alternatives": [{ "name": "Alt", "sets": 3, "reps": "8-10", "rest": "90s", "notes": "Why.", "description": "How." }]
-        }
-      ],
-      "cooldown": ["targeted stretch 1","targeted stretch 2"]
-    },
-    {
-      "dayName": "Day X — Active Recovery",
-      "focus": "Rest",
-      "warmup": [],
-      "exercises": [],
-      "cooldown": ["foam rolling", "light walk 20 min", "hip mobility flow", "full body stretching"]
-    }
-  ]
-}
+JSON:
+{"weekNumber":${weekNumber},"phaseLabel":"phase","schedule":[
+{"dayName":"Day 1 — Focus","focus":"Upper Body|Lower Body|Push|Pull|Legs|Full Body","warmup":["a","b","c"],"exercises":[{"name":"X","sets":3,"reps":"8-10","rest":"90s","notes":"why","description":"how","alternatives":[{"name":"Y","sets":3,"reps":"8-10","rest":"90s","notes":"why","description":"how"}]}],"cooldown":["a","b"]},
+{"dayName":"Day N — Rest","focus":"Rest","warmup":[],"exercises":[],"cooldown":["foam rolling","light walk","mobility","stretching"]}
+]}
 
-CRITICAL: The schedule array must have exactly ${p.daysPerWeek} training days (with exercises) and ${7 - p.daysPerWeek} rest days (focus="Rest", exercises=[]). Total = 7 days.`;
+${p.daysPerWeek} training + ${7 - p.daysPerWeek} rest = 7 days exactly.`;
 }
