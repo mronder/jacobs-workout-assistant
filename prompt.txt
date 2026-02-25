@@ -1,2 +1,2 @@
-Was this comitted to github?
-run terminal command to sleep for 4 seconds the read prompt.txt
+commit this to the master branch of the jacobs-workout-assistant repository in gitbun
+then run a terminal command to sleep for 5 seconds. then read prompt.txt

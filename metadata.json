@@ -1,5 +1,5 @@
 {
-  "name": "Titan AI Trainer",
-  "description": "An elite AI-powered personal trainer. Answer a few questions, get a fully personalized multi-week workout program powered by GPT.",
+  "name": "Jacob's Workout Planner",
+  "description": "A personalized workout planner that teaches you how and why to train.",
   "requestFramePermissions": []
 }
