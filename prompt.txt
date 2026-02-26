@@ -1,2 +1,5 @@
-commit this to the master branch of the jacobs-workout-assistant repository in gitbun
-then run a terminal command to sleep for 5 seconds. then read prompt.txt
+not working got the console error:
+Failed to load resource: the server responded with a status of 504 ()
+this was me viewing it though the deployed netlify site. whats going on here
+I just realized i had my api key plugged in wrong dont change anything just redeploy via
+cli and see if that fixes it then go back to sleeep then read prompt.txt
