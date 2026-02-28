@@ -76,23 +76,127 @@ const jsonSchema = {
 } as const;
 
 /* ------------------------------------------------------------------ */
-/*  Prompt builder                                                     */
+/*  Batch-parallel prompt: one call per day, run concurrently          */
 /* ------------------------------------------------------------------ */
-function buildPrompt(daysPerWeek: number, goal: string, level: string): string {
-  return `Act as an elite personal trainer. Create a 1-week workout template for a ${level} individual whose goal is ${goal}. They train ${daysPerWeek} days/week.
+const daySchema = {
+  name: 'workout_day',
+  strict: true,
+  schema: {
+    type: 'object',
+    properties: {
+      dayNumber: { type: 'number' },
+      focus: { type: 'string' },
+      exercises: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            sets: { type: 'number' },
+            reps: { type: 'string' },
+            rest: { type: 'string' },
+            alternatives: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  expertAdvice: { type: 'string' },
+                  videoSearchQuery: { type: 'string' },
+                },
+                required: ['name', 'expertAdvice', 'videoSearchQuery'],
+                additionalProperties: false,
+              },
+            },
+            videoSearchQuery: { type: 'string' },
+            expertAdvice: { type: 'string' },
+          },
+          required: [
+            'name', 'sets', 'reps', 'rest',
+            'alternatives', 'videoSearchQuery', 'expertAdvice',
+          ],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ['dayNumber', 'focus', 'exercises'],
+    additionalProperties: false,
+  },
+} as const;
+
+/* ------------------------------------------------------------------ */
+/*  Prompt builders                                                    */
+/* ------------------------------------------------------------------ */
+
+/** Metadata prompt — very small output, returns instantly */
+function buildMetaPrompt(daysPerWeek: number, goal: string, level: string, splitName: string): string {
+  return `You are an elite personal trainer. A ${level} client wants ${goal}, training ${daysPerWeek} days/week using a "${splitName}" split.
+
+Return:
+- planName: a short motivating name for this plan (max 5 words)
+- splitDescription: 1-2 sentences describing the split and why it suits this client
+- motivationalQuote: a real quote from a famous person (Ali, Arnold, Marcus Aurelius, etc.)
+- quoteAuthor: the person's name`;
+}
+
+/** Per-day prompt — generates one day's exercises only */
+function buildDayPrompt(
+  dayNumber: number,
+  dayFocus: string,
+  daysPerWeek: number,
+  goal: string,
+  level: string,
+  splitName: string,
+): string {
+  return `You are an elite personal trainer. Create day ${dayNumber} of a ${daysPerWeek}-day "${splitName}" split for a ${level} individual whose goal is ${goal}.
+
+This day's focus: ${dayFocus}
 
 RULES:
-1. Use PROVEN splits:
-   - 3 Days: Full Body (3x) or Push/Pull/Legs
-   - 4 Days: 4 Day Bro Split
-   - 5 Days: Classic 5 Day Bro Split
-   - 6 Days: Push/Pull/Legs (2x) or Extended 6 Day Bro Split.
-   Stick to these. No weird hybrids.
-2. Each day: MINIMUM 6 exercises.
-3. 2 alternatives per exercise with YouTube search queries and expert advice.
-4. Expert advice = practical form cues (body position, where to feel tension, mistakes to avoid). No silly analogies. Plain English.
-5. Each day's focus explains the goal and why the split works.
-6. Include a real motivational quote from a famous person (Ali, Arnold, Marcus Aurelius, etc.) with their name.`;
+1. MINIMUM 6 exercises for this day.
+2. 2 alternatives per exercise, each with a YouTube search query and 1-sentence expert advice.
+3. expertAdvice = 1 concise sentence: key form cue or common mistake. No fluff.
+4. videoSearchQuery = short YouTube search string for the exercise.
+5. focus = 1-2 sentences on this day's goal and why these muscles are grouped.
+6. Return dayNumber as ${dayNumber}.`;
+}
+
+/** Pick the canonical split and day focuses for a given frequency */
+function getSplitConfig(daysPerWeek: number): { splitName: string; dayFocuses: string[] } {
+  switch (daysPerWeek) {
+    case 3:
+      return {
+        splitName: 'Push/Pull/Legs',
+        dayFocuses: ['Push (Chest, Shoulders, Triceps)', 'Pull (Back, Biceps, Rear Delts)', 'Legs (Quads, Hamstrings, Glutes, Calves)'],
+      };
+    case 4:
+      return {
+        splitName: '4 Day Bro Split',
+        dayFocuses: ['Chest & Triceps', 'Back & Biceps', 'Shoulders & Abs', 'Legs'],
+      };
+    case 5:
+      return {
+        splitName: 'Classic 5 Day Bro Split',
+        dayFocuses: ['Chest', 'Back', 'Shoulders', 'Legs', 'Arms (Biceps & Triceps)'],
+      };
+    case 6:
+      return {
+        splitName: 'Push/Pull/Legs (2x)',
+        dayFocuses: [
+          'Push A (Chest-focused, Shoulders, Triceps)',
+          'Pull A (Back-focused, Biceps, Rear Delts)',
+          'Legs A (Quad-focused, Glutes, Calves)',
+          'Push B (Shoulder-focused, Chest, Triceps)',
+          'Pull B (Back width-focused, Biceps, Rear Delts)',
+          'Legs B (Hamstring & Glute-focused, Calves)',
+        ],
+      };
+    default:
+      return {
+        splitName: 'Full Body',
+        dayFocuses: Array.from({ length: daysPerWeek }, (_, i) => `Full Body Day ${i + 1}`),
+      };
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -146,59 +250,87 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       );
     }
 
-    /* ---------- Call OpenAI via plain fetch ---------- */
-    const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4.1-mini',
-        messages: [
-          {
-            role: 'system',
-            content:
-              'You are an expert personal trainer and exercise scientist. Return structured workout plans. Be concise but thorough with form cues.',
-          },
-          { role: 'user', content: buildPrompt(daysPerWeek, goal, level) },
-        ],
-        response_format: { type: 'json_schema', json_schema: jsonSchema },
-        temperature: 0.7,
-      }),
-    });
+    const { splitName, dayFocuses } = getSplitConfig(daysPerWeek);
 
-    if (!openaiRes.ok) {
-      const errBody: { error?: { message?: string } } = await openaiRes
-        .json()
-        .catch(() => ({ error: {} }));
-      throw new Error(
-        errBody.error?.message || `OpenAI error ${openaiRes.status}`,
-      );
+    /* ---------- Helper: single OpenAI call ---------- */
+    async function callOpenAI(
+      systemMsg: string,
+      userMsg: string,
+      schema: typeof jsonSchema | typeof daySchema,
+      maxTokens: number,
+    ) {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'gpt-4.1-mini',
+          messages: [
+            { role: 'system', content: systemMsg },
+            { role: 'user', content: userMsg },
+          ],
+          response_format: { type: 'json_schema', json_schema: schema },
+          temperature: 0.5,
+          max_tokens: maxTokens,
+        }),
+      });
+
+      if (!res.ok) {
+        const errBody: { error?: { message?: string } } = await res
+          .json()
+          .catch(() => ({ error: {} }));
+        throw new Error(errBody.error?.message || `OpenAI error ${res.status}`);
+      }
+
+      const json: { choices: { message: { content: string } }[] } = await res.json();
+      return JSON.parse(json.choices[0].message.content);
     }
 
-    const json: {
-      choices: { message: { content: string } }[];
-    } = await openaiRes.json();
+    const sysMsg = 'You are an expert personal trainer and exercise scientist. Return structured workout plans. Be concise.';
 
-    const data = JSON.parse(json.choices[0].message.content);
+    /* ---------- Fire ALL requests in parallel ---------- */
+    const metaPromise = callOpenAI(
+      sysMsg,
+      buildMetaPrompt(daysPerWeek, goal, level, splitName),
+      jsonSchema,   // reuse full schema — OpenAI will just fill the top-level fields + empty days
+      300,
+    ).catch((err) => {
+      // Fallback: generate metadata locally so we don't block the whole plan
+      console.error('Meta prompt failed, using defaults:', err);
+      return {
+        planName: `${splitName} Program`,
+        splitDescription: `A ${daysPerWeek}-day ${splitName} split designed for ${level} trainees focused on ${goal}.`,
+        motivationalQuote: 'The only bad workout is the one that didn\'t happen.',
+        quoteAuthor: 'Unknown',
+        days: [],
+      };
+    });
+
+    const dayPromises = dayFocuses.map((focus, idx) =>
+      callOpenAI(
+        sysMsg,
+        buildDayPrompt(idx + 1, focus, daysPerWeek, goal, level, splitName),
+        daySchema,
+        1500,
+      ),
+    );
+
+    // Wait for everything at once — total time ≈ slowest single day (~6-10s)
+    const [meta, ...days] = await Promise.all([metaPromise, ...dayPromises]);
 
     /* ---------- Shape the response ---------- */
-    const days = data.days.map(
-      (d: { dayNumber: number; focus: string; exercises: unknown[] }) => ({
-        dayNumber: d.dayNumber,
-        focus: d.focus,
-        exercises: d.exercises,
-      }),
-    );
+    // Sort days by dayNumber just in case
+    days.sort((a: { dayNumber: number }, b: { dayNumber: number }) => a.dayNumber - b.dayNumber);
 
     const weeks = [1, 2, 3, 4].map((weekNumber) => ({ weekNumber, days }));
 
     const plan = {
-      planName: data.planName,
-      splitDescription: data.splitDescription,
-      motivationalQuote: data.motivationalQuote,
-      quoteAuthor: data.quoteAuthor,
+      planName: meta.planName,
+      splitDescription: meta.splitDescription,
+      motivationalQuote: meta.motivationalQuote,
+      quoteAuthor: meta.quoteAuthor,
       weeks,
     };
 
