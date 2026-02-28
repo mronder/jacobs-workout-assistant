@@ -1,12 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Dumbbell, RefreshCw, Flame } from 'lucide-react';
+import { Dumbbell, RefreshCw, Flame, LogOut, Loader2 } from 'lucide-react';
 import { WorkoutPlan, TrackedWorkout } from './types';
 import { generateWorkoutPlan } from './services/openai';
+import { useAuth } from './contexts/AuthContext';
+import { savePlan, loadActivePlan, deactivatePlan } from './services/plans';
+import { saveTrackedWorkout, loadTrackedWorkouts } from './services/tracking';
+import { checkLocalStorageData, migrateLocalStorageToSupabase, clearLocalStorageData } from './services/migration';
 
+import Auth from './components/Auth';
 import Setup from './components/Setup';
 import Dashboard from './components/Dashboard';
 import ActiveWorkout from './components/ActiveWorkout';
+import BottomNav from './components/BottomNav';
+import History from './components/History';
+import MigrationPrompt from './components/MigrationPrompt';
 
 const STORAGE_KEYS = {
   plan: 'jw_plan',
@@ -14,17 +22,63 @@ const STORAGE_KEYS = {
 } as const;
 
 export default function App() {
+  const { user, loading: authLoading, signOut } = useAuth();
+
   const [plan, setPlan] = useState<WorkoutPlan | null>(null);
+  const [planId, setPlanId] = useState<string | null>(null);
   const [trackedWorkouts, setTrackedWorkouts] = useState<TrackedWorkout[]>([]);
   const [activeWorkout, setActiveWorkout] = useState<{ week: number; day: number } | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [currentTab, setCurrentTab] = useState<'workouts' | 'history'>('workouts');
+  const [dataLoading, setDataLoading] = useState(false);
+  const [showMigration, setShowMigration] = useState(false);
+
+  /* ---- Load data from Supabase when user is authenticated ---- */
+  const loadUserData = useCallback(async (userId: string) => {
+    setDataLoading(true);
+    try {
+      const result = await loadActivePlan(userId);
+      if (result) {
+        setPlan(result.plan);
+        setPlanId(result.planId);
+        // Cache in localStorage
+        localStorage.setItem(STORAGE_KEYS.plan, JSON.stringify(result.plan));
+
+        const tracked = await loadTrackedWorkouts(userId, result.planId);
+        setTrackedWorkouts(tracked);
+        localStorage.setItem(STORAGE_KEYS.tracked, JSON.stringify(tracked));
+      } else {
+        setPlan(null);
+        setPlanId(null);
+        setTrackedWorkouts([]);
+      }
+    } catch (err) {
+      console.error('Failed to load user data:', err);
+      // Fall back to localStorage cache
+      const cachedPlan = localStorage.getItem(STORAGE_KEYS.plan);
+      const cachedTracked = localStorage.getItem(STORAGE_KEYS.tracked);
+      if (cachedPlan) setPlan(JSON.parse(cachedPlan));
+      if (cachedTracked) setTrackedWorkouts(JSON.parse(cachedTracked));
+    } finally {
+      setDataLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const savedPlan = localStorage.getItem(STORAGE_KEYS.plan);
-    const savedTracked = localStorage.getItem(STORAGE_KEYS.tracked);
-    if (savedPlan) setPlan(JSON.parse(savedPlan));
-    if (savedTracked) setTrackedWorkouts(JSON.parse(savedTracked));
-  }, []);
+    if (!user) {
+      // Check if there's localStorage data when not logged in (will show migration prompt after login)
+      return;
+    }
+
+    // Check for localStorage migration
+    if (checkLocalStorageData()) {
+      setShowMigration(true);
+    }
+
+    loadUserData(user.id);
+  }, [user, loadUserData]);
+
+  /* ---- Handlers ---- */
 
   const handleGenerate = async (days: number, goal: string, level: string) => {
     setIsGenerating(true);
@@ -34,6 +88,16 @@ export default function App() {
       setTrackedWorkouts([]);
       localStorage.setItem(STORAGE_KEYS.plan, JSON.stringify(newPlan));
       localStorage.setItem(STORAGE_KEYS.tracked, JSON.stringify([]));
+
+      // Save to Supabase
+      if (user) {
+        try {
+          const id = await savePlan(user.id, newPlan, days, goal, level);
+          setPlanId(id);
+        } catch (err) {
+          console.error('Failed to save plan to Supabase:', err);
+        }
+      }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Please try again.';
       alert(`Failed to generate plan: ${message}`);
@@ -42,7 +106,7 @@ export default function App() {
     }
   };
 
-  const handleCompleteWorkout = (workout: TrackedWorkout) => {
+  const handleCompleteWorkout = async (workout: TrackedWorkout) => {
     const idx = trackedWorkouts.findIndex(
       (w) => w.weekNumber === workout.weekNumber && w.dayNumber === workout.dayNumber
     );
@@ -52,18 +116,78 @@ export default function App() {
     setTrackedWorkouts(updated);
     localStorage.setItem(STORAGE_KEYS.tracked, JSON.stringify(updated));
     setActiveWorkout(null);
+
+    // Save to Supabase
+    if (user && planId) {
+      try {
+        await saveTrackedWorkout(user.id, planId, workout);
+      } catch (err) {
+        console.error('Failed to save tracked workout to Supabase:', err);
+      }
+    }
   };
 
-  const resetPlan = () => {
+  const resetPlan = async () => {
     if (!confirm('Start a new plan? This will clear your current progress.')) return;
+
+    // Deactivate in Supabase (don't delete — we want history)
+    if (planId) {
+      try {
+        await deactivatePlan(planId);
+      } catch (err) {
+        console.error('Failed to deactivate plan:', err);
+      }
+    }
+
     setPlan(null);
+    setPlanId(null);
     setTrackedWorkouts([]);
     localStorage.removeItem(STORAGE_KEYS.plan);
     localStorage.removeItem(STORAGE_KEYS.tracked);
   };
 
+  const handleMigrationImport = async () => {
+    if (!user) return;
+    await migrateLocalStorageToSupabase(user.id);
+    setShowMigration(false);
+    await loadUserData(user.id);
+  };
+
+  const handleMigrationSkip = () => {
+    clearLocalStorageData();
+    setShowMigration(false);
+  };
+
+  /* ---- Auth loading state ---- */
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+        <Loader2 className="w-6 h-6 text-orange-500 animate-spin" />
+      </div>
+    );
+  }
+
+  /* ---- Not logged in ---- */
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] text-zinc-100 font-sans selection:bg-orange-500/30">
+        <Auth />
+      </div>
+    );
+  }
+
+  /* ---- Logged in ---- */
+  const showBottomNav = !activeWorkout && !isGenerating;
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-zinc-100 font-sans selection:bg-orange-500/30">
+      {/* Migration prompt */}
+      <AnimatePresence>
+        {showMigration && (
+          <MigrationPrompt onImport={handleMigrationImport} onSkip={handleMigrationSkip} />
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <header className="border-b border-[#1a1a1a] bg-[#0a0a0a]/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
@@ -80,46 +204,67 @@ export default function App() {
               </p>
             </div>
           </div>
-          {plan && !activeWorkout && (
+          <div className="flex items-center gap-2">
+            {plan && !activeWorkout && currentTab === 'workouts' && (
+              <button
+                onClick={resetPlan}
+                className="text-xs text-zinc-500 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer px-3 py-1.5 rounded-lg hover:bg-[#111]"
+              >
+                <RefreshCw className="w-3 h-3" /> New Plan
+              </button>
+            )}
             <button
-              onClick={resetPlan}
-              className="text-xs text-zinc-500 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer px-3 py-1.5 rounded-lg hover:bg-[#111]"
+              onClick={signOut}
+              className="text-xs text-zinc-500 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer px-2 py-1.5 rounded-lg hover:bg-[#111]"
+              title={user.email ?? 'Log out'}
             >
-              <RefreshCw className="w-3 h-3" /> New Plan
+              <LogOut className="w-3.5 h-3.5" />
             </button>
-          )}
+          </div>
         </div>
       </header>
 
       {/* Main */}
-      <main className="max-w-lg mx-auto px-4 py-6">
-        <AnimatePresence mode="wait">
-          {isGenerating ? (
-            <LoadingScreen key="loading" />
-          ) : !plan ? (
-            <Setup key="setup" onGenerate={handleGenerate} />
-          ) : activeWorkout ? (
-            <ActiveWorkout
-              key="active"
-              plan={plan}
-              week={activeWorkout.week}
-              day={activeWorkout.day}
-              existingWorkout={trackedWorkouts.find(
-                (w) => w.weekNumber === activeWorkout.week && w.dayNumber === activeWorkout.day
-              )}
-              onComplete={handleCompleteWorkout}
-              onCancel={() => setActiveWorkout(null)}
-            />
-          ) : (
-            <Dashboard
-              key="dashboard"
-              plan={plan}
-              trackedWorkouts={trackedWorkouts}
-              onStartWorkout={(w, d) => setActiveWorkout({ week: w, day: d })}
-            />
-          )}
-        </AnimatePresence>
+      <main className={`max-w-lg mx-auto px-4 py-6 ${showBottomNav ? 'pb-24' : ''}`}>
+        {dataLoading ? (
+          <div className="flex flex-col items-center justify-center py-24">
+            <Loader2 className="w-6 h-6 text-orange-500 animate-spin mb-3" />
+            <p className="text-zinc-500 text-sm">Loading your workouts...</p>
+          </div>
+        ) : (
+          <AnimatePresence mode="wait">
+            {currentTab === 'history' ? (
+              <History key="history" />
+            ) : isGenerating ? (
+              <LoadingScreen key="loading" />
+            ) : !plan ? (
+              <Setup key="setup" onGenerate={handleGenerate} />
+            ) : activeWorkout ? (
+              <ActiveWorkout
+                key="active"
+                plan={plan}
+                week={activeWorkout.week}
+                day={activeWorkout.day}
+                existingWorkout={trackedWorkouts.find(
+                  (w) => w.weekNumber === activeWorkout.week && w.dayNumber === activeWorkout.day
+                )}
+                onComplete={handleCompleteWorkout}
+                onCancel={() => setActiveWorkout(null)}
+              />
+            ) : (
+              <Dashboard
+                key="dashboard"
+                plan={plan}
+                trackedWorkouts={trackedWorkouts}
+                onStartWorkout={(w, d) => setActiveWorkout({ week: w, day: d })}
+              />
+            )}
+          </AnimatePresence>
+        )}
       </main>
+
+      {/* Bottom Navigation */}
+      {showBottomNav && <BottomNav currentTab={currentTab} onTabChange={setCurrentTab} />}
     </div>
   );
 }
