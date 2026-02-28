@@ -9,10 +9,12 @@ import type { WorkoutPlan, TrackedWorkout } from '../types';
 const STORAGE_KEYS = {
   plan: 'jw_plan',
   tracked: 'jw_tracked',
+  migrationDone: 'jw_migration_done',
 } as const;
 
-/** Returns true if there is existing plan/tracked data in localStorage. */
+/** Returns true if there is existing plan/tracked data in localStorage AND migration hasn't been done yet. */
 export function checkLocalStorageData(): boolean {
+  if (localStorage.getItem(STORAGE_KEYS.migrationDone)) return false;
   return !!(localStorage.getItem(STORAGE_KEYS.plan) || localStorage.getItem(STORAGE_KEYS.tracked));
 }
 
@@ -40,13 +42,15 @@ export async function migrateLocalStorageToSupabase(userId: string): Promise<voi
     }
   }
 
-  // Clear old localStorage data
+  // Clear old localStorage data and mark migration as done
   localStorage.removeItem(STORAGE_KEYS.plan);
   localStorage.removeItem(STORAGE_KEYS.tracked);
+  localStorage.setItem(STORAGE_KEYS.migrationDone, '1');
 }
 
-/** Clear localStorage data without importing. */
+/** Clear localStorage data without importing and mark migration as done. */
 export function clearLocalStorageData(): void {
   localStorage.removeItem(STORAGE_KEYS.plan);
   localStorage.removeItem(STORAGE_KEYS.tracked);
+  localStorage.setItem(STORAGE_KEYS.migrationDone, '1');
 }
