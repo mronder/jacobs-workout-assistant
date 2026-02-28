@@ -84,9 +84,9 @@ function buildPrompt(daysPerWeek: number, goal: string, level: string): string {
 RULES:
 1. Use PROVEN splits:
    - 3 Days: Full Body (3x) or Push/Pull/Legs
-   - 4 Days: Condensed Bro Split or Upper/Lower (2x)
-   - 5 Days: Bro Split or Upper/Lower/PPL
-   - 6 Days: Push/Pull/Legs (2x) or Extended Bro Split.
+   - 4 Days: 4 Day Bro Split
+   - 5 Days: Classic 5 Day Bro Split
+   - 6 Days: Push/Pull/Legs (2x) or Extended 6 Day Bro Split.
    Stick to these. No weird hybrids.
 2. Each day: MINIMUM 6 exercises.
 3. 2 alternatives per exercise with YouTube search queries and expert advice.
