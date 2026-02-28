@@ -1,26 +1,24 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig } from 'vite';
 
-export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '');
-  return {
-    plugins: [react(), tailwindcss()],
-    define: {
-      // DEV  → real key from .env.local (for direct OpenAI calls in browser)
-      // PROD → empty string (the code path is tree-shaken by Rollup)
-      __DEV_API_KEY__: JSON.stringify(
-        mode === 'development' ? (env.OPENAI_API_KEY ?? '') : '',
-      ),
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, '.'),
     },
-    resolve: {
-      alias: {
-        '@': path.resolve(__dirname, '.'),
+  },
+  server: {
+    hmr: true,
+    // Proxy /api requests to local Wrangler Pages dev server so the
+    // OpenAI key never leaves the server (even during local dev).
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8788',
+        changeOrigin: true,
       },
     },
-    server: {
-      hmr: true,
-    },
-  };
+  },
 });
