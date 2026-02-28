@@ -192,14 +192,14 @@ function getSplitConfig(daysPerWeek: number): { splitName: string; dayFocuses: s
       };
     case 6:
       return {
-        splitName: 'Push/Pull/Legs (2x)',
+        splitName: 'Arnold Split',
         dayFocuses: [
-          'Push A (Chest-focused, Shoulders, Triceps)',
-          'Pull A (Back-focused, Biceps, Rear Delts)',
-          'Legs A (Quad-focused, Glutes, Calves)',
-          'Push B (Shoulder-focused, Chest, Triceps)',
-          'Pull B (Back width-focused, Biceps, Rear Delts)',
-          'Legs B (Hamstring & Glute-focused, Calves)',
+          'Chest & Back A',
+          'Shoulders & Arms A',
+          'Legs A',
+          'Chest & Back B',
+          'Shoulders & Arms B',
+          'Legs B',
         ],
       };
     default:
