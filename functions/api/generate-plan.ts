@@ -32,6 +32,7 @@ const jsonSchema = {
           properties: {
             dayNumber: { type: 'number' },
             focus: { type: 'string' },
+            description: { type: 'string' },
             exercises: {
               type: 'array',
               items: {
@@ -65,7 +66,7 @@ const jsonSchema = {
               },
             },
           },
-          required: ['dayNumber', 'focus', 'exercises'],
+          required: ['dayNumber', 'focus', 'description', 'exercises'],
           additionalProperties: false,
         },
       },
@@ -86,6 +87,7 @@ const daySchema = {
     properties: {
       dayNumber: { type: 'number' },
       focus: { type: 'string' },
+      description: { type: 'string' },
       exercises: {
         type: 'array',
         items: {
@@ -119,7 +121,7 @@ const daySchema = {
         },
       },
     },
-    required: ['dayNumber', 'focus', 'exercises'],
+    required: ['dayNumber', 'focus', 'description', 'exercises'],
     additionalProperties: false,
   },
 } as const;
@@ -157,8 +159,9 @@ RULES:
 2. 2 alternatives per exercise, each with a YouTube search query and 1-sentence expert advice.
 3. expertAdvice = 1 concise sentence: key form cue or common mistake. No fluff.
 4. videoSearchQuery = short YouTube search string for the exercise.
-5. focus MUST follow this exact format: "Short Title: 1-2 sentence description". Example: "Chest: Build thickness and width with heavy compound presses followed by isolation work." The part before the colon should be 1-3 words (the muscle group).
-6. Return dayNumber as ${dayNumber}.`;
+5. focus = short title, 1-5 words max. Example: "Chest & Triceps".
+6. description = 1-2 sentences explaining what muscle areas/sections are targeted and why. For example for a chest day: "Focus on upper, mid, and lower pec development with heavy compounds for thickness and flyes for width." Be specific about anatomy.
+7. Return dayNumber as ${dayNumber}.`;
 }
 
 /** Pick the canonical split and day focuses for a given frequency */

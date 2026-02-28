@@ -104,12 +104,12 @@ export default function Dashboard({ plan, trackedWorkouts, onStartWorkout }: Das
                     {completed ? <CheckCircle className="w-5 h-5" /> : `D${day.dayNumber}`}
                   </div>
                   <div className="min-w-0">
-                    <h3 className="font-bold text-sm leading-snug">{day.focus.split(/[:\-\u2013]/)[0].trim()}</h3>
-                    {day.focus.includes(':') || day.focus.includes('-') || day.focus.includes('\u2013') ? (
+                    <h3 className="font-bold text-sm leading-snug">{day.focus}</h3>
+                    {day.description && (
                       <p className="text-[11px] text-zinc-400 leading-relaxed mt-0.5">
-                        {day.focus.substring(day.focus.search(/[:\-\u2013]/) + 1).trim()}
+                        {day.description}
                       </p>
-                    ) : null}
+                    )}
                     <p className="text-[11px] text-zinc-500 mt-0.5">{day.exercises.length} exercises</p>
                   </div>
                 </div>

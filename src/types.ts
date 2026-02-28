@@ -17,6 +17,7 @@ export interface Exercise {
 export interface WorkoutDay {
   dayNumber: number;
   focus: string;
+  description?: string;
   exercises: Exercise[];
 }
 
