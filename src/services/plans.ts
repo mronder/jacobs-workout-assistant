@@ -18,6 +18,7 @@ export async function savePlan(
   daysPerWeek: number,
   goal: string,
   level: string,
+  secondaryGoal: string | null = null,
 ): Promise<string> {
   // 1. Deactivate any currently active plan
   await supabase
@@ -38,6 +39,7 @@ export async function savePlan(
       days_per_week: daysPerWeek,
       goal,
       level,
+      secondary_goal: secondaryGoal,
       is_active: true,
     })
     .select('id')

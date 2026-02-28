@@ -80,10 +80,10 @@ export default function App() {
 
   /* ---- Handlers ---- */
 
-  const handleGenerate = async (days: number, goal: string, level: string) => {
+  const handleGenerate = async (days: number, goal: string, secondaryGoal: string | null, level: string) => {
     setIsGenerating(true);
     try {
-      const newPlan = await generateWorkoutPlan(days, goal, level);
+      const newPlan = await generateWorkoutPlan(days, goal, level, secondaryGoal);
       setPlan(newPlan);
       setTrackedWorkouts([]);
       localStorage.setItem(STORAGE_KEYS.plan, JSON.stringify(newPlan));
@@ -92,7 +92,7 @@ export default function App() {
       // Save to Supabase
       if (user) {
         try {
-          const id = await savePlan(user.id, newPlan, days, goal, level);
+          const id = await savePlan(user.id, newPlan, days, goal, level, secondaryGoal);
           setPlanId(id);
         } catch (err) {
           console.error('Failed to save plan to Supabase:', err);

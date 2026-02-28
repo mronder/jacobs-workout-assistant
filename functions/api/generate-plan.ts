@@ -131,8 +131,11 @@ const daySchema = {
 /* ------------------------------------------------------------------ */
 
 /** Metadata prompt — very small output, returns instantly */
-function buildMetaPrompt(daysPerWeek: number, goal: string, level: string, splitName: string): string {
-  return `You are an elite personal trainer. A ${level} client wants ${goal}, training ${daysPerWeek} days/week using a "${splitName}" split.
+function buildMetaPrompt(daysPerWeek: number, goal: string, level: string, splitName: string, secondaryGoal: string | null): string {
+  const goalText = secondaryGoal
+    ? `${goal} (primary) with a secondary focus on ${secondaryGoal}`
+    : goal;
+  return `You are an elite personal trainer. A ${level} client wants ${goalText}, training ${daysPerWeek} days/week using a "${splitName}" split.
 
 Return:
 - planName: a short motivating name for this plan (max 5 words)
@@ -149,8 +152,12 @@ function buildDayPrompt(
   goal: string,
   level: string,
   splitName: string,
+  secondaryGoal: string | null,
 ): string {
-  return `You are an elite personal trainer. Create day ${dayNumber} of a ${daysPerWeek}-day "${splitName}" split for a ${level} individual whose goal is ${goal}.
+  const goalText = secondaryGoal
+    ? `${goal} (primary goal) with a secondary focus on ${secondaryGoal}`
+    : goal;
+  return `You are an elite personal trainer. Create day ${dayNumber} of a ${daysPerWeek}-day "${splitName}" split for a ${level} individual whose goal is ${goalText}.
 
 This day's focus: ${dayFocus}
 
@@ -160,8 +167,9 @@ RULES:
 3. expertAdvice = 1 concise sentence: key form cue or common mistake. No fluff.
 4. videoSearchQuery = short YouTube search string for the exercise.
 5. focus = short title, 1-5 words max. Example: "Chest & Triceps".
-6. description = 1-2 sentences explaining what muscle areas/sections are targeted and why. For example for a chest day: "Focus on upper, mid, and lower pec development with heavy compounds for thickness and flyes for width." Be specific about anatomy.
-7. Return dayNumber as ${dayNumber}.`;
+6. description = 1-2 sentences explaining what muscle areas/sections are targeted and why. For example for a chest day: "Focus on upper, mid, and lower pec development with heavy compounds for thickness and flyes for width." Be specific about anatomy.${secondaryGoal ? `
+7. Where appropriate, incorporate exercise selection, rep ranges, or rest periods that also serve the secondary goal of ${secondaryGoal}. For example, if the secondary goal is Fat Loss, include supersets or shorter rest periods; if Strength, include heavier compound movements.` : ''}
+${secondaryGoal ? '8' : '7'}. Return dayNumber as ${dayNumber}.`;
 }
 
 /** Pick the canonical split and day focuses for a given frequency */
@@ -226,10 +234,10 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   }
 
   try {
-    const body: { daysPerWeek?: number; goal?: string; level?: string } =
+    const body: { daysPerWeek?: number; goal?: string; level?: string; secondaryGoal?: string | null } =
       await context.request.json();
 
-    const { daysPerWeek, goal, level } = body;
+    const { daysPerWeek, goal, level, secondaryGoal = null } = body;
 
     if (
       typeof daysPerWeek !== 'number' ||
@@ -296,15 +304,16 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     /* ---------- Fire ALL requests in parallel ---------- */
     const metaPromise = callOpenAI(
       sysMsg,
-      buildMetaPrompt(daysPerWeek, goal, level, splitName),
+      buildMetaPrompt(daysPerWeek, goal, level, splitName, secondaryGoal),
       jsonSchema,   // reuse full schema — OpenAI will just fill the top-level fields + empty days
       300,
     ).catch((err) => {
       // Fallback: generate metadata locally so we don't block the whole plan
       console.error('Meta prompt failed, using defaults:', err);
+      const goalDesc = secondaryGoal ? `${goal} with a secondary focus on ${secondaryGoal}` : goal;
       return {
         planName: `${splitName} Program`,
-        splitDescription: `A ${daysPerWeek}-day ${splitName} split designed for ${level} trainees focused on ${goal}.`,
+        splitDescription: `A ${daysPerWeek}-day ${splitName} split designed for ${level} trainees focused on ${goalDesc}.`,
         motivationalQuote: 'The only bad workout is the one that didn\'t happen.',
         quoteAuthor: 'Unknown',
         days: [],
@@ -314,7 +323,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     const dayPromises = dayFocuses.map((focus, idx) =>
       callOpenAI(
         sysMsg,
-        buildDayPrompt(idx + 1, focus, daysPerWeek, goal, level, splitName),
+        buildDayPrompt(idx + 1, focus, daysPerWeek, goal, level, splitName, secondaryGoal),
         daySchema,
         1500,
       ),

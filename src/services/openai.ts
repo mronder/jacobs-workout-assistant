@@ -12,11 +12,12 @@ async function callViaFunction(
   daysPerWeek: number,
   goal: string,
   level: string,
+  secondaryGoal: string | null,
 ): Promise<WorkoutPlan> {
   const response = await fetch('/api/generate-plan', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ daysPerWeek, goal, level }),
+    body: JSON.stringify({ daysPerWeek, goal, level, secondaryGoal }),
   });
 
   if (!response.ok) {
@@ -36,6 +37,7 @@ export async function generateWorkoutPlan(
   daysPerWeek: number,
   goal: string,
   level: string,
+  secondaryGoal: string | null = null,
 ): Promise<WorkoutPlan> {
-  return callViaFunction(daysPerWeek, goal, level);
+  return callViaFunction(daysPerWeek, goal, level, secondaryGoal);
 }

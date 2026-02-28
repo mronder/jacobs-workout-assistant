@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { Flame, Target, Zap, ChevronRight } from 'lucide-react';
 
 interface SetupProps {
-  onGenerate: (days: number, goal: string, level: string) => void;
+  onGenerate: (days: number, goal: string, secondaryGoal: string | null, level: string) => void;
 }
 
 const goals = [
@@ -22,6 +22,7 @@ const levels = [
 export default function Setup({ onGenerate }: SetupProps) {
   const [days, setDays] = useState(4);
   const [goal, setGoal] = useState('Hypertrophy (Muscle Growth)');
+  const [secondaryGoal, setSecondaryGoal] = useState<string | null>(null);
   const [level, setLevel] = useState('Intermediate');
 
   return (
@@ -82,7 +83,7 @@ export default function Setup({ onGenerate }: SetupProps) {
           </div>
         </motion.div>
 
-        {/* Goal */}
+        {/* Primary Goal */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -97,7 +98,11 @@ export default function Setup({ onGenerate }: SetupProps) {
             {goals.map((g) => (
               <button
                 key={g.value}
-                onClick={() => setGoal(g.value)}
+                onClick={() => {
+                  setGoal(g.value);
+                  // Clear secondary if it matches the new primary
+                  if (secondaryGoal === g.value) setSecondaryGoal(null);
+                }}
                 className={`flex items-center gap-3 p-4 rounded-xl text-left transition-all duration-200 cursor-pointer border ${
                   goal === g.value
                     ? 'bg-orange-500/10 border-orange-500/50 text-white'
@@ -111,11 +116,46 @@ export default function Setup({ onGenerate }: SetupProps) {
           </div>
         </motion.div>
 
+        {/* Secondary Goal */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="bg-[#111] rounded-2xl p-5 border border-[#222]"
+        >
+          <label className="flex items-center gap-2 text-sm font-bold text-zinc-300 mb-2">
+            <Target className="w-4 h-4 text-orange-500" />
+            SECONDARY GOAL
+            <span className="text-[11px] font-normal text-zinc-500 ml-1">(optional)</span>
+          </label>
+          <p className="text-zinc-500 text-xs mb-4">Pick a secondary focus to complement your primary goal.</p>
+          <div className="grid grid-cols-2 gap-3">
+            {goals
+              .filter((g) => g.value !== goal)
+              .map((g) => (
+                <button
+                  key={g.value}
+                  onClick={() =>
+                    setSecondaryGoal(secondaryGoal === g.value ? null : g.value)
+                  }
+                  className={`flex items-center gap-3 p-4 rounded-xl text-left transition-all duration-200 cursor-pointer border ${
+                    secondaryGoal === g.value
+                      ? 'bg-blue-500/10 border-blue-500/50 text-white'
+                      : 'bg-[#1a1a1a] border-transparent text-zinc-400 hover:bg-[#222] hover:text-zinc-200'
+                  }`}
+                >
+                  <span className="text-xl">{g.icon}</span>
+                  <span className="text-sm font-semibold">{g.label}</span>
+                </button>
+              ))}
+          </div>
+        </motion.div>
+
         {/* Level */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35 }}
+          transition={{ delay: 0.4 }}
           className="bg-[#111] rounded-2xl p-5 border border-[#222]"
         >
           <label className="flex items-center gap-2 text-sm font-bold text-zinc-300 mb-4">
@@ -144,10 +184,10 @@ export default function Setup({ onGenerate }: SetupProps) {
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.45 }}
+          transition={{ delay: 0.5 }}
         >
           <button
-            onClick={() => onGenerate(days, goal, level)}
+            onClick={() => onGenerate(days, goal, secondaryGoal, level)}
             className="w-full py-5 bg-orange-500 hover:bg-orange-400 text-black font-extrabold text-lg rounded-2xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-orange-500/20 active:scale-[0.98]"
           >
             Generate My Plan
