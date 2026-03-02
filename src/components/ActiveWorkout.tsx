@@ -10,6 +10,7 @@ interface ActiveWorkoutProps {
   existingWorkout?: TrackedWorkout;
   onComplete: (workout: TrackedWorkout) => void;
   onCancel: () => void;
+  onAutoSave?: (exercises: TrackedExercise[]) => void;
 }
 
 export default function ActiveWorkout({
@@ -19,23 +20,34 @@ export default function ActiveWorkout({
   existingWorkout,
   onComplete,
   onCancel,
+  onAutoSave,
 }: ActiveWorkoutProps) {
   const workoutDay = plan.weeks
     .find((w) => w.weekNumber === week)
     ?.days.find((d) => d.dayNumber === day);
 
-  const [trackedData, setTrackedData] = useState<TrackedExercise[]>(
-    existingWorkout
-      ? existingWorkout.exercises
-      : (workoutDay?.exercises.map((ex) => ({
-          exerciseName: ex.name,
-          sets: Array.from({ length: ex.sets }).map(() => ({
-            weight: 0,
-            reps: 0,
-            completed: false,
-          })),
-        })) ?? [])
-  );
+  const [trackedData, setTrackedData] = useState<TrackedExercise[]>(() => {
+    // Recover in-progress session from localStorage
+    try {
+      const saved = localStorage.getItem('jw_active_session');
+      if (saved) {
+        const session = JSON.parse(saved);
+        if (session.week === week && session.day === day && session.exercises?.length) {
+          return session.exercises;
+        }
+      }
+    } catch { /* ignore corrupt data */ }
+    if (existingWorkout) return existingWorkout.exercises;
+    return workoutDay?.exercises.map((ex) => ({
+      exerciseName: ex.name,
+      weightUnit: 'lbs' as const,
+      sets: Array.from({ length: ex.sets }).map(() => ({
+        weight: 0,
+        reps: 0,
+        completed: false,
+      })),
+    })) ?? [];
+  });
 
   const [expandedExercise, setExpandedExercise] = useState<number | null>(0);
   const exerciseRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -52,6 +64,27 @@ export default function ActiveWorkout({
     }
   }, [expandedExercise]);
 
+  // Auto-save to localStorage on every change (survives phone lock / app close)
+  useEffect(() => {
+    localStorage.setItem(
+      'jw_active_session',
+      JSON.stringify({ week, day, exercises: trackedData, lastSaved: Date.now() })
+    );
+  }, [trackedData, week, day]);
+
+  // Auto-save to Supabase when app goes to background / phone locks
+  const trackedDataRef = useRef(trackedData);
+  trackedDataRef.current = trackedData;
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        onAutoSave?.(trackedDataRef.current);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [onAutoSave]);
+
   if (!workoutDay) return null;
 
   const selectAlternative = (exIndex: number, altName: string) => {
@@ -63,15 +96,28 @@ export default function ActiveWorkout({
   const updateSet = (
     exIndex: number,
     setIndex: number,
-    field: 'weight' | 'reps' | 'completed',
-    value: number | boolean
+    field: 'weight' | 'reps',
+    value: number
   ) => {
     const newData = [...trackedData];
+    const currentSet = { ...newData[exIndex].sets[setIndex], [field]: value };
+    // Auto-complete: a set counts as done when reps are entered
+    currentSet.completed = currentSet.reps > 0;
     newData[exIndex] = {
       ...newData[exIndex],
       sets: newData[exIndex].sets.map((s, i) =>
-        i === setIndex ? { ...s, [field]: value } : s
+        i === setIndex ? currentSet : s
       ),
+    };
+    setTrackedData(newData);
+  };
+
+  const toggleWeightUnit = (exIndex: number) => {
+    const newData = [...trackedData];
+    const current = newData[exIndex].weightUnit ?? 'lbs';
+    newData[exIndex] = {
+      ...newData[exIndex],
+      weightUnit: current === 'lbs' ? 'kg' : 'lbs',
     };
     setTrackedData(newData);
   };
@@ -139,12 +185,16 @@ export default function ActiveWorkout({
           const currentAlt = ex.alternatives.find(
             (a) => a.name === trackedEx.exerciseName
           );
-          const displayAdvice = currentAlt
-            ? currentAlt.expertAdvice
-            : ex.expertAdvice;
-          const displayVideo = currentAlt
-            ? currentAlt.videoSearchQuery
-            : ex.videoSearchQuery;
+          const displayAdvice = currentAlt?.expertAdvice || ex.expertAdvice || 'Focus on proper form and controlled movements.';
+          const displayVideo = currentAlt?.videoSearchQuery || ex.videoSearchQuery || `${trackedEx.exerciseName} exercise form tutorial`;
+
+          // Unified swap list: original + all alternatives (always shows original)
+          const allSwapOptions = [
+            { name: ex.name, isOriginal: true },
+            ...ex.alternatives
+              .filter(a => a.name !== ex.name)
+              .map(a => ({ name: a.name, isOriginal: false })),
+          ];
 
           return (
             <div
@@ -220,45 +270,33 @@ export default function ActiveWorkout({
                         SWAP EXERCISE
                       </p>
                       <div className="space-y-1.5">
-                        {ex.alternatives.map((alt, i) => (
+                        {allSwapOptions.map((opt, i) => (
                           <div
                             key={i}
                             className="flex items-center justify-between"
                           >
                             <span className="text-xs text-zinc-400 truncate mr-2">
-                              {alt.name}
+                              {opt.name}
+                              {opt.isOriginal && trackedEx.exerciseName !== ex.name && (
+                                <span className="text-[9px] text-zinc-600 ml-1">(original)</span>
+                              )}
                             </span>
-                            {trackedEx.exerciseName !== alt.name ? (
+                            {trackedEx.exerciseName === opt.name ? (
+                              <span className="text-[10px] text-orange-500 font-bold shrink-0">
+                                Active
+                              </span>
+                            ) : (
                               <button
                                 onClick={() =>
-                                  selectAlternative(exIndex, alt.name)
+                                  selectAlternative(exIndex, opt.name)
                                 }
                                 className="text-[10px] bg-[#1a1a1a] hover:bg-[#222] px-2 py-1 rounded text-zinc-400 transition-colors cursor-pointer shrink-0"
                               >
                                 Use
                               </button>
-                            ) : (
-                              <span className="text-[10px] text-orange-500 font-bold shrink-0">
-                                Active
-                              </span>
                             )}
                           </div>
                         ))}
-                        {trackedEx.exerciseName !== ex.name && (
-                          <div className="flex items-center justify-between pt-1.5 border-t border-[#1a1a1a] mt-1.5">
-                            <span className="text-xs text-zinc-600 truncate mr-2">
-                              {ex.name}
-                            </span>
-                            <button
-                              onClick={() =>
-                                selectAlternative(exIndex, ex.name)
-                              }
-                              className="text-[10px] bg-[#1a1a1a] hover:bg-[#222] px-2 py-1 rounded text-zinc-400 transition-colors cursor-pointer shrink-0"
-                            >
-                              Revert
-                            </button>
-                          </div>
-                        )}
                       </div>
                     </div>
                     <a
@@ -276,28 +314,34 @@ export default function ActiveWorkout({
 
                   {/* Set Tracking */}
                   <div>
-                    <div className="grid grid-cols-[2rem_1fr_1fr_2.5rem] gap-2 px-1 text-[10px] font-bold text-zinc-600 uppercase tracking-wider mb-2">
+                    <div className="grid grid-cols-[2rem_1fr_1fr] gap-2 px-1 text-[10px] font-bold text-zinc-600 uppercase tracking-wider mb-2">
                       <div className="text-center">Set</div>
-                      <div>Weight</div>
-                      <div>Reps</div>
-                      <div className="text-center">
-                        <Check className="w-3 h-3 mx-auto" />
+                      <div className="flex items-center gap-1.5">
+                        Weight
+                        <button
+                          onClick={(e) => { e.stopPropagation(); toggleWeightUnit(exIndex); }}
+                          className="text-[9px] bg-[#1a1a1a] hover:bg-[#222] px-1.5 py-0.5 rounded text-orange-500 font-bold transition-colors cursor-pointer normal-case"
+                        >
+                          {trackedEx.weightUnit ?? 'lbs'}
+                        </button>
                       </div>
+                      <div>Reps</div>
                     </div>
 
                     {trackedEx.sets.map((set, setIndex) => (
                       <div
                         key={setIndex}
-                        className={`grid grid-cols-[2rem_1fr_1fr_2.5rem] gap-2 items-center py-1.5 px-1 rounded-xl transition-colors ${
+                        className={`grid grid-cols-[2rem_1fr_1fr] gap-2 items-center py-1.5 px-1 rounded-xl transition-colors ${
                           set.completed ? 'bg-orange-500/8' : ''
                         }`}
                       >
-                        <div className="text-center font-mono text-xs text-zinc-500">
-                          {setIndex + 1}
+                        <div className={`text-center font-mono text-xs transition-colors ${set.completed ? 'text-orange-500 font-bold' : 'text-zinc-500'}`}>
+                          {set.completed ? '✓' : setIndex + 1}
                         </div>
                         <input
                           type="number"
-                          inputMode="numeric"
+                          inputMode="decimal"
+                          step="any"
                           placeholder="0"
                           value={set.weight || ''}
                           onChange={(e) =>
@@ -305,11 +349,10 @@ export default function ActiveWorkout({
                               exIndex,
                               setIndex,
                               'weight',
-                              Number(e.target.value)
+                              parseFloat(e.target.value) || 0
                             )
                           }
-                          disabled={set.completed}
-                          className="w-full bg-black/40 border border-[#222] rounded-lg px-2 py-2.5 text-center text-sm text-white focus:outline-none focus:border-orange-500/50 disabled:opacity-40 transition-colors"
+                          className="w-full bg-black/40 border border-[#222] rounded-lg px-2 py-2.5 text-center text-sm text-white focus:outline-none focus:border-orange-500/50 transition-colors"
                         />
                         <input
                           type="number"
@@ -324,26 +367,8 @@ export default function ActiveWorkout({
                               Number(e.target.value)
                             )
                           }
-                          disabled={set.completed}
-                          className="w-full bg-black/40 border border-[#222] rounded-lg px-2 py-2.5 text-center text-sm text-white focus:outline-none focus:border-orange-500/50 disabled:opacity-40 transition-colors"
+                          className="w-full bg-black/40 border border-[#222] rounded-lg px-2 py-2.5 text-center text-sm text-white focus:outline-none focus:border-orange-500/50 transition-colors"
                         />
-                        <button
-                          onClick={() =>
-                            updateSet(
-                              exIndex,
-                              setIndex,
-                              'completed',
-                              !set.completed
-                            )
-                          }
-                          className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all cursor-pointer active:scale-90 ${
-                            set.completed
-                              ? 'bg-orange-500 text-black'
-                              : 'bg-[#1a1a1a] text-zinc-600 hover:text-zinc-400 border border-[#222]'
-                          }`}
-                        >
-                          <Check className="w-4 h-4" />
-                        </button>
                       </div>
                     ))}
 

@@ -42,6 +42,7 @@ export interface TrackedSet {
 
 export interface TrackedExercise {
   exerciseName: string;
+  weightUnit?: 'kg' | 'lbs';
   sets: TrackedSet[];
 }
 

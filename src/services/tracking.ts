@@ -70,6 +70,7 @@ export async function saveTrackedWorkout(
       weight: s.weight,
       reps: s.reps,
       completed: s.completed,
+      weight_unit: ex.weightUnit ?? 'lbs',
     })),
   );
 
@@ -101,7 +102,8 @@ export async function loadTrackedWorkouts(
         set_number,
         weight,
         reps,
-        completed
+        completed,
+        weight_unit
       )
     `,
     )
@@ -116,7 +118,7 @@ export async function loadTrackedWorkouts(
     // Group sets by exercise_name
     const exerciseMap = new Map<
       string,
-      Array<{ weight: number; reps: number; completed: boolean; setNumber: number }>
+      Array<{ weight: number; reps: number; completed: boolean; setNumber: number; weightUnit: string }>
     >();
 
     for (const s of tw.tracked_sets ?? []) {
@@ -126,11 +128,13 @@ export async function loadTrackedWorkouts(
         reps: s.reps,
         completed: s.completed,
         setNumber: s.set_number,
+        weightUnit: s.weight_unit ?? 'lbs',
       });
     }
 
     const exercises = Array.from(exerciseMap.entries()).map(([name, sets]) => ({
       exerciseName: name,
+      weightUnit: (sets[0]?.weightUnit as 'kg' | 'lbs') ?? 'lbs',
       sets: sets.sort((a, b) => a.setNumber - b.setNumber).map((s) => ({
         weight: s.weight,
         reps: s.reps,

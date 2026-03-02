@@ -13,7 +13,7 @@ export default function Dashboard({ plan, trackedWorkouts, onStartWorkout }: Das
   const [activeWeek, setActiveWeek] = useState(1);
 
   const totalWorkouts = plan.weeks.reduce((acc, week) => acc + week.days.length, 0);
-  const completedCount = trackedWorkouts.length;
+  const completedCount = trackedWorkouts.filter(tw => tw.completed).length;
   const progress = Math.round((completedCount / totalWorkouts) * 100);
 
   const currentWeek = plan.weeks.find((w) => w.weekNumber === activeWeek);
@@ -57,7 +57,7 @@ export default function Dashboard({ plan, trackedWorkouts, onStartWorkout }: Das
           const weekCompleted = plan.weeks
             .find((wk) => wk.weekNumber === w)
             ?.days.every((d) =>
-              trackedWorkouts.some((tw) => tw.weekNumber === w && tw.dayNumber === d.dayNumber)
+              trackedWorkouts.some((tw) => tw.weekNumber === w && tw.dayNumber === d.dayNumber && tw.completed)
             );
 
           return (
@@ -81,7 +81,7 @@ export default function Dashboard({ plan, trackedWorkouts, onStartWorkout }: Das
       <div className="space-y-3">
         {currentWeek?.days.map((day, idx) => {
           const completed = trackedWorkouts.some(
-            (tw) => tw.weekNumber === activeWeek && tw.dayNumber === day.dayNumber
+            (tw) => tw.weekNumber === activeWeek && tw.dayNumber === day.dayNumber && tw.completed
           );
 
           return (

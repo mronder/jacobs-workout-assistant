@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Dumbbell, RefreshCw, Flame, LogOut, Loader2 } from 'lucide-react';
-import { WorkoutPlan, TrackedWorkout } from './types';
+import { WorkoutPlan, TrackedWorkout, TrackedExercise } from './types';
 import { generateWorkoutPlan } from './services/openai';
 import { useAuth } from './contexts/AuthContext';
 import { savePlan, loadActivePlan, deactivatePlan } from './services/plans';
@@ -19,6 +19,7 @@ import MigrationPrompt from './components/MigrationPrompt';
 const STORAGE_KEYS = {
   plan: 'jw_plan',
   tracked: 'jw_tracked',
+  activeSession: 'jw_active_session',
 } as const;
 
 export default function App() {
@@ -27,7 +28,16 @@ export default function App() {
   const [plan, setPlan] = useState<WorkoutPlan | null>(null);
   const [planId, setPlanId] = useState<string | null>(null);
   const [trackedWorkouts, setTrackedWorkouts] = useState<TrackedWorkout[]>([]);
-  const [activeWorkout, setActiveWorkout] = useState<{ week: number; day: number } | null>(null);
+  const [activeWorkout, setActiveWorkout] = useState<{ week: number; day: number } | null>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.activeSession);
+      if (saved) {
+        const session = JSON.parse(saved);
+        if (session.week && session.day) return { week: session.week, day: session.day };
+      }
+    } catch { /* ignore */ }
+    return null;
+  });
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentTab, setCurrentTab] = useState<'workouts' | 'history'>('workouts');
   const [dataLoading, setDataLoading] = useState(false);
@@ -115,6 +125,7 @@ export default function App() {
       : [...trackedWorkouts, workout];
     setTrackedWorkouts(updated);
     localStorage.setItem(STORAGE_KEYS.tracked, JSON.stringify(updated));
+    localStorage.removeItem(STORAGE_KEYS.activeSession);
     setActiveWorkout(null);
 
     // Save to Supabase
@@ -126,6 +137,21 @@ export default function App() {
       }
     }
   };
+
+  const handleAutoSave = useCallback(async (exercises: TrackedExercise[]) => {
+    if (!user || !planId || !activeWorkout) return;
+    try {
+      await saveTrackedWorkout(user.id, planId, {
+        weekNumber: activeWorkout.week,
+        dayNumber: activeWorkout.day,
+        date: new Date().toISOString(),
+        exercises,
+        completed: false,
+      });
+    } catch (err) {
+      console.error('Auto-save failed:', err);
+    }
+  }, [user, planId, activeWorkout]);
 
   const resetPlan = async () => {
     if (!confirm('Start a new plan? This will clear your current progress.')) return;
@@ -249,7 +275,11 @@ export default function App() {
                   (w) => w.weekNumber === activeWorkout.week && w.dayNumber === activeWorkout.day
                 )}
                 onComplete={handleCompleteWorkout}
-                onCancel={() => setActiveWorkout(null)}
+                onCancel={() => {
+                  localStorage.removeItem(STORAGE_KEYS.activeSession);
+                  setActiveWorkout(null);
+                }}
+                onAutoSave={handleAutoSave}
               />
             ) : (
               <Dashboard
