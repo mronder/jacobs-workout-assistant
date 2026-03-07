@@ -52,18 +52,8 @@ export default function ActiveWorkout({
     ?.days.find((d) => d.dayNumber === day);
 
   const [trackedData, setTrackedData] = useState<TrackedExercise[]>(() => {
-    // Recover in-progress session from localStorage
-    try {
-      const saved = localStorage.getItem('jw_active_session');
-      if (saved) {
-        const session = JSON.parse(saved);
-        if (session.week === week && session.day === day && session.exercises?.length) {
-          return session.exercises;
-        }
-      }
-    } catch { /* ignore corrupt data */ }
-    if (existingWorkout) return existingWorkout.exercises;
-    return workoutDay?.exercises.map((ex) => ({
+    // Build fresh default from plan
+    const freshDefault = () => workoutDay?.exercises.map((ex) => ({
       exerciseName: ex.name,
       weightUnit: 'lbs' as const,
       sets: Array.from({ length: ex.sets }).map(() => ({
@@ -72,6 +62,42 @@ export default function ActiveWorkout({
         completed: false,
       })),
     })) ?? [];
+
+    // Validate that a saved exercise name matches the plan exercise (original or alt)
+    const isValidName = (savedName: string, planEx: { name: string; alternatives: { name: string }[] }) =>
+      savedName === planEx.name || planEx.alternatives.some(a => a.name === savedName);
+
+    // Recover in-progress session from localStorage
+    try {
+      const saved = localStorage.getItem('jw_active_session');
+      if (saved) {
+        const session = JSON.parse(saved);
+        if (session.week === week && session.day === day && session.exercises?.length && workoutDay) {
+          // Validate exercise count matches current plan
+          if (session.exercises.length === workoutDay.exercises.length) {
+            // Validate each exercise name is the original or a known alternative
+            const validated = session.exercises.map((savedEx: TrackedExercise, i: number) => {
+              const planEx = workoutDay.exercises[i];
+              if (isValidName(savedEx.exerciseName, planEx)) return savedEx;
+              // Name doesn't match — reset to original exercise name, keep set data
+              return { ...savedEx, exerciseName: planEx.name };
+            });
+            return validated;
+          }
+          // Exercise count mismatch — discard stale session
+        }
+      }
+    } catch { /* ignore corrupt data */ }
+    if (existingWorkout && workoutDay && existingWorkout.exercises.length === workoutDay.exercises.length) {
+      // Validate existing workout exercise names too
+      return existingWorkout.exercises.map((savedEx, i) => {
+        const planEx = workoutDay.exercises[i];
+        if (isValidName(savedEx.exerciseName, planEx)) return savedEx;
+        return { ...savedEx, exerciseName: planEx.name };
+      });
+    }
+    if (existingWorkout) return existingWorkout.exercises;
+    return freshDefault();
   });
 
   // Day-level note
@@ -275,6 +301,19 @@ export default function ActiveWorkout({
     return !!(nextMention || prevMention);
   };
 
+  // Determine superset position label (A1 = first exercise, A2 = second)
+  const getSupersetLabel = (exIndex: number): string | null => {
+    if (!hasSupersetPartner(exIndex)) return null;
+    const exercises = workoutDay.exercises;
+    const prev = exercises[exIndex - 1];
+    const supersetPattern = /super\s*set/i;
+    const prevMention = prev && (supersetPattern.test(prev.rest) || supersetPattern.test(prev.expertAdvice || ''));
+    return prevMention ? 'A2' : 'A1';
+  };
+
+  // Check if this exercise is the first in a superset pair
+  const isSupersetStart = (exIndex: number): boolean => getSupersetLabel(exIndex) === 'A1';
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -336,8 +375,8 @@ export default function ActiveWorkout({
               </span>
             </div>
             {!timerComplete && (
-              <span className="text-[11px] text-zinc-400 font-medium">
-                {workoutDay.exercises[activeTimer!.exIndex]?.name}
+              <span className="text-[11px] text-zinc-400 font-medium truncate max-w-[140px]">
+                {trackedData[activeTimer!.exIndex]?.exerciseName ?? workoutDay.exercises[activeTimer!.exIndex]?.name}
               </span>
             )}
           </div>
@@ -381,17 +420,27 @@ export default function ActiveWorkout({
           ];
 
           const isTimerRunning = activeTimer?.exIndex === exIndex;
+          const supersetLabel = getSupersetLabel(exIndex);
+          const isFirstInSuperset = isSupersetStart(exIndex);
 
           return (
-            <div
-              key={exIndex}
-              ref={(el) => {
-                exerciseRefs.current[exIndex] = el;
-              }}
-              className={`bg-surface-1 rounded-2xl overflow-hidden transition-all shadow-card ${
-                allDone ? 'ring-1 ring-orange-500/40' : ''
-              }`}
-            >
+            <div key={exIndex}>
+              {/* Superset header label */}
+              {isFirstInSuperset && (
+                <div className="flex items-center gap-2 mb-2 mt-1">
+                  <div className="h-px flex-1 bg-purple-500/20" />
+                  <span className="text-[10px] font-bold text-purple-400 uppercase tracking-widest">Superset</span>
+                  <div className="h-px flex-1 bg-purple-500/20" />
+                </div>
+              )}
+              <div
+                ref={(el) => {
+                  exerciseRefs.current[exIndex] = el;
+                }}
+                className={`bg-surface-1 rounded-2xl overflow-hidden transition-all shadow-card ${
+                  allDone ? 'ring-1 ring-orange-500/40' : ''
+                } ${supersetLabel ? 'border-l-2 border-l-purple-500/40' : ''}`}
+              >
               {/* Exercise Header */}
               <div
                 className="p-4 cursor-pointer flex items-center justify-between select-none active:bg-surface-3 transition-colors min-h-[52px]"
@@ -420,10 +469,15 @@ export default function ActiveWorkout({
                     )}
                   </div>
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-sm truncate">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-semibold text-sm leading-snug line-clamp-2">
                         {trackedEx.exerciseName}
                       </h3>
+                      {supersetLabel && (
+                        <span className="text-[9px] text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded font-bold shrink-0">
+                          {supersetLabel}
+                        </span>
+                      )}
                       {trackedEx.exerciseName !== ex.name && (
                         <span className="text-[9px] text-orange-500 bg-orange-500/10 px-1.5 py-0.5 rounded font-semibold shrink-0">
                           ALT
@@ -587,7 +641,7 @@ export default function ActiveWorkout({
 
                   {/* Rest Timer Button */}
                   <button
-                    onClick={() => startRestTimer(exIndex, ex.rest)}
+                    onClick={() => startRestTimer(exIndex, displayRest)}
                     disabled={isTimerRunning}
                     className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer min-h-[44px] ${
                       isTimerRunning
@@ -634,6 +688,7 @@ export default function ActiveWorkout({
                   />
                 </div>
               )}
+            </div>
             </div>
           );
         })}
