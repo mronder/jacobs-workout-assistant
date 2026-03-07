@@ -113,10 +113,16 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-3 gap-3.5">
-        <StatCard label="Progress" value={`${progress}%`} />
-        <StatCard label="Completed" value={`${completedCount}`} />
-        <StatCard label="Remaining" value={`${totalWorkouts - completedCount}`} />
+      <div className="grid grid-cols-2 gap-3.5">
+        <div className="col-span-2 bg-surface-1 rounded-2xl p-5 shadow-card flex items-center gap-5">
+          <ProgressRing percent={progress} />
+          <div className="flex-1 min-w-0">
+            <div className="text-2xl font-extrabold font-mono text-orange-500">{progress}%</div>
+            <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-medium mt-0.5">Overall Progress</div>
+          </div>
+        </div>
+        <StatCard label="Completed" value={`${completedCount}`} color="green" />
+        <StatCard label="Remaining" value={`${totalWorkouts - completedCount}`} color="neutral" />
       </div>
 
       {/* Week Tabs */}
@@ -258,10 +264,47 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
+function ProgressRing({ percent }: { percent: number }) {
+  const size = 60;
+  const strokeWidth = 5;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (percent / 100) * circumference;
+
+  return (
+    <svg width={size} height={size} className="shrink-0 -rotate-90">
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        stroke="currentColor"
+        strokeWidth={strokeWidth}
+        fill="none"
+        className="text-surface-3"
+      />
+      <motion.circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        stroke="currentColor"
+        strokeWidth={strokeWidth}
+        fill="none"
+        strokeLinecap="round"
+        className="text-orange-500"
+        initial={{ strokeDashoffset: circumference }}
+        animate={{ strokeDashoffset: offset }}
+        transition={{ duration: 0.8, ease: 'easeOut' }}
+        strokeDasharray={circumference}
+      />
+    </svg>
+  );
+}
+
+function StatCard({ label, value, color }: { label: string; value: string; color: 'green' | 'neutral' }) {
+  const accent = color === 'green' ? 'text-green-400' : 'text-zinc-300';
   return (
     <div className="bg-surface-1 rounded-xl p-4 text-center shadow-card">
-      <div className="text-2xl font-extrabold font-mono text-white">{value}</div>
+      <div className={`text-2xl font-extrabold font-mono ${accent}`}>{value}</div>
       <div className="text-[10px] text-zinc-500 uppercase tracking-widest mt-1 font-medium">{label}</div>
     </div>
   );

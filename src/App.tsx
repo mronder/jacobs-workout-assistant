@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Dumbbell, RefreshCw, Flame, LogOut, Loader2 } from 'lucide-react';
+import { Dumbbell, RefreshCw, Flame, LogOut } from 'lucide-react';
 import { WorkoutPlan, TrackedWorkout, TrackedExercise } from './types';
 import { generateWorkoutPlan } from './services/openai';
 import { useAuth } from './contexts/AuthContext';
@@ -162,8 +162,24 @@ export default function App() {
   /* ---- Auth loading state ---- */
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-ground flex items-center justify-center">
-        <Loader2 className="w-6 h-6 text-orange-500 animate-spin" />
+      <div className="min-h-screen bg-ground flex flex-col items-center justify-center gap-5">
+        <motion.div
+          animate={{ scale: [1, 1.15, 1] }}
+          transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+          className="w-14 h-14 rounded-2xl bg-orange-500 flex items-center justify-center"
+        >
+          <Dumbbell className="w-7 h-7 text-black" />
+        </motion.div>
+        <div className="flex gap-1.5">
+          {[0, 1, 2].map((i) => (
+            <motion.div
+              key={i}
+              className="w-1.5 h-1.5 rounded-full bg-orange-500"
+              animate={{ opacity: [0.3, 1, 0.3] }}
+              transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
+            />
+          ))}
+        </div>
       </div>
     );
   }
@@ -221,9 +237,15 @@ export default function App() {
       {/* Main */}
       <main className={`max-w-lg mx-auto px-4 py-6 ${showBottomNav ? 'pb-24' : ''}`}>
         {dataLoading ? (
-          <div className="flex flex-col items-center justify-center py-24">
-            <Loader2 className="w-6 h-6 text-orange-500 animate-spin mb-3" />
-            <p className="text-zinc-500 text-sm">Loading your workouts...</p>
+          <div className="space-y-4 py-6">
+            {/* Shimmer skeleton placeholders */}
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-surface-1 rounded-2xl p-6 shadow-card animate-pulse">
+                <div className="h-4 bg-surface-3 rounded w-2/3 mb-3" />
+                <div className="h-3 bg-surface-3 rounded w-1/2 mb-2" />
+                <div className="h-3 bg-surface-3 rounded w-1/3" />
+              </div>
+            ))}
           </div>
         ) : (
           <AnimatePresence mode="wait">
@@ -286,6 +308,8 @@ function LoadingScreen() {
     return () => clearInterval(interval);
   }, []);
 
+  const progressPercent = ((msgIdx + 1) / messages.length) * 100;
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -293,16 +317,26 @@ function LoadingScreen() {
       exit={{ opacity: 0 }}
       className="flex flex-col items-center justify-center py-32 text-center"
     >
+      {/* Branded animation */}
       <div className="relative w-20 h-20 mb-8">
-        <div className="absolute inset-0 border-2 border-border rounded-full" />
+        <motion.div
+          className="absolute inset-0 rounded-full border-2 border-orange-500/20"
+          animate={{ scale: [1, 1.3, 1], opacity: [0.5, 0, 0.5] }}
+          transition={{ duration: 2, repeat: Infinity, ease: 'easeOut' }}
+        />
+        <div className="absolute inset-0 border-2 border-surface-3 rounded-full" />
         <motion.div
           className="absolute inset-0 border-2 border-orange-500 rounded-full border-t-transparent"
           animate={{ rotate: 360 }}
           transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
         />
-        <div className="absolute inset-0 flex items-center justify-center">
+        <motion.div
+          className="absolute inset-0 flex items-center justify-center"
+          animate={{ scale: [1, 1.1, 1] }}
+          transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+        >
           <Flame className="w-7 h-7 text-orange-500" />
-        </div>
+        </motion.div>
       </div>
       <h2 className="text-xl font-extrabold mb-3 tracking-tight">Building Your Plan</h2>
       <AnimatePresence mode="wait">
@@ -316,6 +350,15 @@ function LoadingScreen() {
           {messages[msgIdx]}
         </motion.p>
       </AnimatePresence>
+
+      {/* Progress bar */}
+      <div className="w-48 h-1 bg-surface-3 rounded-full mt-6 overflow-hidden">
+        <motion.div
+          className="h-full bg-orange-500 rounded-full"
+          animate={{ width: `${progressPercent}%` }}
+          transition={{ duration: 0.5, ease: 'easeOut' }}
+        />
+      </div>
     </motion.div>
   );
 }

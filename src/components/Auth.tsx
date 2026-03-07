@@ -50,33 +50,53 @@ export default function Auth() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="flex flex-col items-center justify-center py-16 px-4"
+      className="flex flex-col items-center justify-center min-h-screen px-4 relative overflow-hidden"
     >
-      {/* Logo */}
-      <div className="flex items-center gap-3 mb-8">
-        <div className="w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center">
-          <Dumbbell className="w-5 h-5 text-black" />
-        </div>
-        <div>
-          <h1 className="font-extrabold text-lg leading-none tracking-tight">
-            JACOB<span className="text-orange-500">'S</span>
-          </h1>
-          <p className="text-[9px] text-zinc-600 uppercase tracking-[0.2em] font-semibold leading-none mt-0.5">
-            Workout Planner
-          </p>
-        </div>
+      {/* Background gradient */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-orange-500/8 rounded-full blur-[100px]" />
+        <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-ground to-transparent" />
       </div>
 
-      {/* Form Card */}
-      <div className="w-full max-w-sm">
-        <h2 className="text-xl font-extrabold mb-1 tracking-tight text-center">
-          {mode === 'login' ? 'Welcome Back' : 'Create Account'}
-        </h2>
-        <p className="text-zinc-500 text-sm text-center mb-6">
-          {mode === 'login'
-            ? 'Log in to access your workouts'
-            : 'Sign up to save your workout data'}
-        </p>
+      <div className="relative z-10 w-full max-w-sm">
+        {/* Logo */}
+        <div className="flex flex-col items-center mb-10">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.1, type: 'spring', stiffness: 200 }}
+            className="relative mb-5"
+          >
+            <div className="w-16 h-16 rounded-2xl bg-orange-500 flex items-center justify-center">
+              <Dumbbell className="w-8 h-8 text-black" />
+            </div>
+            <motion.div
+              className="absolute -inset-2 rounded-2xl border border-orange-500/30"
+              animate={{ opacity: [0.3, 0.6, 0.3], scale: [1, 1.05, 1] }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+            />
+          </motion.div>
+          <h1 className="font-extrabold text-xl leading-none tracking-tight mb-1">
+            JACOB<span className="text-orange-500">'S</span>
+          </h1>
+          <p className="text-[9px] text-zinc-600 uppercase tracking-[0.2em] font-semibold leading-none">
+            Workout Planner
+          </p>
+          <p className="text-zinc-500 text-xs mt-4 text-center max-w-[250px]">
+            AI-powered training plans that adapt to you
+          </p>
+        </div>
+
+        {/* Form Card */}
+        <div>
+          <h2 className="text-xl font-extrabold mb-1 tracking-tight text-center">
+            {mode === 'login' ? 'Welcome Back' : 'Create Account'}
+          </h2>
+          <p className="text-zinc-500 text-sm text-center mb-6">
+            {mode === 'login'
+              ? 'Log in to access your workouts'
+              : 'Sign up to save your workout data'}
+          </p>
 
         <form onSubmit={handleSubmit} className="space-y-3">
           {/* Email */}
@@ -172,6 +192,7 @@ export default function Auth() {
             {mode === 'login' ? 'Sign Up' : 'Log In'}
           </button>
         </p>
+        </div>
       </div>
     </motion.div>
   );

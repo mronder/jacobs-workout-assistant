@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { motion } from 'motion/react';
-import { X, Check, PlayCircle, Info, ChevronDown, ChevronUp, Plus, Timer, ArrowLeft, MessageSquare, MoreVertical } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { X, Check, PlayCircle, Info, ChevronDown, ChevronUp, Plus, Timer, ArrowLeft, MessageSquare, MoreVertical, Trophy } from 'lucide-react';
 import { WorkoutPlan, TrackedWorkout, TrackedExercise } from '../types';
 
 /** Parse rest strings like '60s', '90s', '2 min', '2-3 min', '60-90s' into seconds (lower bound). */
@@ -101,6 +101,7 @@ export default function ActiveWorkout({
   } | null>(null);
   const [timerSecondsLeft, setTimerSecondsLeft] = useState<number>(0);
   const [timerComplete, setTimerComplete] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
 
   useEffect(() => {
     if (expandedExercise !== null && exerciseRefs.current[expandedExercise]) {
@@ -234,14 +235,17 @@ export default function ActiveWorkout({
   };
 
   const finishWorkout = () => {
-    onComplete({
-      weekNumber: week,
-      dayNumber: day,
-      date: new Date().toISOString(),
-      exercises: trackedData,
-      completed: true,
-      note: workoutNote || undefined,
-    });
+    setShowCelebration(true);
+    setTimeout(() => {
+      onComplete({
+        weekNumber: week,
+        dayNumber: day,
+        date: new Date().toISOString(),
+        exercises: trackedData,
+        completed: true,
+        note: workoutNote || undefined,
+      });
+    }, 1800);
   };
 
   const completedSets = trackedData.reduce(
@@ -301,12 +305,19 @@ export default function ActiveWorkout({
       </div>
 
       {/* Floating Rest Timer Banner */}
-      {(activeTimer || timerComplete) && (
-        <div className={`sticky top-[7.5rem] z-30 mb-3 rounded-xl p-3 flex items-center justify-between transition-all ${
-          timerComplete
-            ? 'bg-green-500/20 border border-green-500/30'
-            : 'bg-orange-500/15 border border-orange-500/25'
-        }`}>
+      <AnimatePresence>
+        {(activeTimer || timerComplete) && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+            className={`sticky top-[7.5rem] z-30 mb-3 rounded-xl p-3 flex items-center justify-between transition-colors ${
+              timerComplete
+                ? 'bg-green-500/20 border border-green-500/30'
+                : 'bg-orange-500/15 border border-orange-500/25'
+            }`}
+          >
           <div className="flex items-center gap-2">
             <Timer className={`w-4 h-4 ${timerComplete ? 'text-green-400' : 'text-orange-500'}`} />
             <span className="text-sm font-bold">
@@ -322,8 +333,9 @@ export default function ActiveWorkout({
               {workoutDay.exercises[activeTimer!.exIndex]?.name}
             </span>
           )}
-        </div>
-      )}
+        </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Exercise List */}
       <div className="space-y-3.5">
@@ -377,7 +389,13 @@ export default function ActiveWorkout({
                     }`}
                   >
                     {allDone ? (
-                      <Check className="w-4 h-4" />
+                      <motion.span
+                        initial={{ scale: 0 }}
+                        animate={{ scale: [0, 1.3, 1] }}
+                        transition={{ duration: 0.35, ease: 'easeOut' }}
+                      >
+                        <Check className="w-4 h-4" />
+                      </motion.span>
                     ) : (
                       <span className="font-mono">{exIndex + 1}</span>
                     )}
@@ -493,7 +511,18 @@ export default function ActiveWorkout({
                         }`}
                       >
                         <div className={`text-center font-mono text-sm transition-colors ${set.completed ? 'text-orange-500 font-bold' : 'text-zinc-500'}`}>
-                          {set.completed ? '✓' : setIndex + 1}
+                          {set.completed ? (
+                            <motion.span
+                              key="check"
+                              initial={{ scale: 0.5 }}
+                              animate={{ scale: [0.5, 1.2, 1] }}
+                              transition={{ duration: 0.25 }}
+                            >
+                              ✓
+                            </motion.span>
+                          ) : (
+                            setIndex + 1
+                          )}
                         </div>
                         <input
                           type="number"
@@ -601,6 +630,37 @@ export default function ActiveWorkout({
           className="w-full bg-transparent border border-transparent rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-border-subtle focus:bg-surface-1 transition-colors resize-none"
         />
       </div>
+
+      {/* Celebration Overlay */}
+      <AnimatePresence>
+        {showCelebration && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-ground/90 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+              className="text-center"
+            >
+              <motion.div
+                animate={{ rotate: [0, -10, 10, -5, 5, 0] }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="w-20 h-20 rounded-full bg-orange-500/20 flex items-center justify-center mx-auto mb-5"
+              >
+                <Trophy className="w-10 h-10 text-orange-500" />
+              </motion.div>
+              <h2 className="text-2xl font-extrabold tracking-tight mb-2">Workout Complete!</h2>
+              <p className="text-zinc-500 text-sm">
+                {completedSets}/{totalSets} sets crushed
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Fixed Bottom CTA */}
       <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border-subtle backdrop-blur-xl bg-ground/80">
