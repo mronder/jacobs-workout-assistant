@@ -1,13 +1,9 @@
-no wrong again... Ive shown below how i want the table set up.
-Also in some of the workout there is a superset for excercise 1 and two and for 
-some reason it is counting it as 4 excercises. not sure why that happening.
-Fix all this and make it look like the table below. then go to sleep and read prompt.txt
-
-
-Set	Weight	Reps
-1	Excercise A	Excercise A
-	Excercise B	Excercise B
-2	Excercise A	Excercise A
-	Excercise B	Excercise B
-3	Excercise A	Excercise A
-	Excercise B	Excercise B
+ok this is better but im still have the same issue where they preview on the day card
+does not match up with the workout. i made a new 5 day plan and on the second back day
+is previewed 5 excercises but in the workout it was only 1 superset and 1 excercise
+total of 3 excercises. I dont know if this is a problem with the gpt request or someting
+else. I think the gpt request is fine because it shows the proper perview but were not
+getting the correct information in the workout card. this is not a global issue.
+most days are fine. it is just happening on this back day for me that i can tell.
+fix this properly like a famoous full stack engineer before commiting to github
+and then going to sleep and reading prompt.txt

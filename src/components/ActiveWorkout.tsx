@@ -286,33 +286,33 @@ export default function ActiveWorkout({
     return mins > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${secs}s`;
   };
 
-  // Detect superset pairing: an exercise has a "partner" if the next exercise
-  // also mentions "superset" in its rest or description
-  const hasSupersetPartner = (exIndex: number): boolean => {
+  // Precompute superset pairs in a single pass to avoid chaining bugs.
+  // Each exercise can belong to at most one pair. Once two consecutive exercises
+  // are paired, the second one is "consumed" and cannot pair with exercise after it.
+  const supersetMap = (() => {
     const exercises = workoutDay.exercises;
-    const current = exercises[exIndex];
-    const next = exercises[exIndex + 1];
-    const prev = exercises[exIndex - 1];
     const supersetPattern = /super\s*set/i;
-    const currentMention = supersetPattern.test(current.rest) || supersetPattern.test(current.expertAdvice || '');
-    if (!currentMention) return false;
-    const nextMention = next && (supersetPattern.test(next.rest) || supersetPattern.test(next.expertAdvice || ''));
-    const prevMention = prev && (supersetPattern.test(prev.rest) || supersetPattern.test(prev.expertAdvice || ''));
-    return !!(nextMention || prevMention);
-  };
+    const map: Record<number, 'A1' | 'A2'> = {};
+    let i = 0;
+    while (i < exercises.length) {
+      const current = exercises[i];
+      const next = exercises[i + 1];
+      const currentMentions = supersetPattern.test(current.rest) || supersetPattern.test(current.expertAdvice || '');
+      const nextMentions = next && (supersetPattern.test(next.rest) || supersetPattern.test(next.expertAdvice || ''));
+      if (currentMentions && nextMentions) {
+        map[i] = 'A1';
+        map[i + 1] = 'A2';
+        i += 2; // Skip past the pair — next exercise cannot chain
+      } else {
+        i += 1;
+      }
+    }
+    return map;
+  })();
 
-  // Determine superset position label (A1 = first exercise, A2 = second)
-  const getSupersetLabel = (exIndex: number): string | null => {
-    if (!hasSupersetPartner(exIndex)) return null;
-    const exercises = workoutDay.exercises;
-    const prev = exercises[exIndex - 1];
-    const supersetPattern = /super\s*set/i;
-    const prevMention = prev && (supersetPattern.test(prev.rest) || supersetPattern.test(prev.expertAdvice || ''));
-    return prevMention ? 'A2' : 'A1';
-  };
-
-  // Check if this exercise is the first in a superset pair
-  const isSupersetStart = (exIndex: number): boolean => getSupersetLabel(exIndex) === 'A1';
+  const hasSupersetPartner = (exIndex: number): boolean => exIndex in supersetMap;
+  const getSupersetLabel = (exIndex: number): 'A1' | 'A2' | null => supersetMap[exIndex] ?? null;
+  const isSupersetStart = (exIndex: number): boolean => supersetMap[exIndex] === 'A1';
 
   return (
     <motion.div
