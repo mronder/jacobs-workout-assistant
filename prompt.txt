@@ -1,2 +1,1 @@
-commit this most recent version to GitHub so I can test it and then 
-go back to sleep and then read prompt.txt
+ok commit this version to github so i can review it then go back to sleep and read prompt.txt

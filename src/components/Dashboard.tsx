@@ -87,7 +87,7 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
           </div>
           <button
             onClick={() => onStartWorkout(resumeSession.week, resumeSession.day)}
-            className="bg-orange-500 text-black px-4 py-2 rounded-xl text-sm font-bold cursor-pointer active:scale-95 transition-all"
+            className="bg-orange-500 text-black px-4 py-2 rounded-xl text-sm font-bold cursor-pointer active:scale-95 transition-all min-h-[44px]"
           >
             Resume
           </button>
@@ -122,24 +122,31 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
       {/* Week Tabs */}
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
         {[1, 2, 3, 4].map((w) => {
-          const weekCompleted = plan.weeks
-            .find((wk) => wk.weekNumber === w)
-            ?.days.every((d) =>
-              trackedWorkouts.some((tw) => tw.weekNumber === w && tw.dayNumber === d.dayNumber && tw.completed)
-            );
+          const weekData = plan.weeks.find((wk) => wk.weekNumber === w);
+          const totalDays = weekData?.days.length ?? 0;
+          const completedDays = weekData?.days.filter((d) =>
+            trackedWorkouts.some((tw) => tw.weekNumber === w && tw.dayNumber === d.dayNumber && tw.completed)
+          ).length ?? 0;
+          const weekCompleted = totalDays > 0 && completedDays === totalDays;
 
           return (
             <button
               key={w}
               onClick={() => setActiveWeek(w)}
-              className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 min-w-[80px] justify-center ${
+              className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 min-w-[80px] min-h-[44px] justify-center ${
                 activeWeek === w
                   ? 'bg-orange-500 text-black'
                   : 'bg-surface-2 text-zinc-500 hover:text-zinc-300'
               }`}
             >
               Week {w}
-              {weekCompleted && <CheckCircle className="w-3.5 h-3.5 text-orange-500" />}
+              {weekCompleted ? (
+                <CheckCircle className={`w-3.5 h-3.5 ${activeWeek === w ? 'text-black/60' : 'text-orange-500'}`} />
+              ) : completedDays > 0 ? (
+                <span className={`text-[10px] font-mono ${activeWeek === w ? 'text-black/60' : 'text-zinc-600'}`}>
+                  {completedDays}/{totalDays}
+                </span>
+              ) : null}
             </button>
           );
         })}
@@ -166,7 +173,7 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
               value={weeklyNotes[activeWeek] ?? ''}
               onChange={(e) => handleWeekNoteChange(e.target.value)}
               rows={3}
-              className="w-full bg-ground/60 border border-border-subtle rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-orange-500/50 transition-colors resize-none"
+              className="w-full bg-ground/60 border border-border-subtle rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 transition-colors resize-none"
             />
           </div>
         )}
@@ -211,7 +218,7 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
 
                 <button
                   onClick={() => onStartWorkout(activeWeek, day.dayNumber)}
-                  className={`shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer active:scale-95 ${
+                  className={`shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer active:scale-95 min-h-[44px] ${
                     completed
                       ? 'bg-surface-3 text-zinc-300 hover:bg-elevated'
                       : 'bg-orange-500 text-black hover:bg-orange-400'

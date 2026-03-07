@@ -90,7 +90,7 @@ export default function History() {
                   placeholder="Search exercises..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full bg-surface-1 border border-border-subtle rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-orange-500/50 transition-colors"
+                  className="w-full bg-surface-1 border border-border-subtle rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 transition-colors min-h-[44px]"
                 />
               </div>
 

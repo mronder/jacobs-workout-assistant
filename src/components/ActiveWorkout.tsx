@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'motion/react';
-import { X, Check, PlayCircle, Info, ChevronDown, ChevronUp, Plus, Timer, ArrowLeft, MessageSquare } from 'lucide-react';
+import { X, Check, PlayCircle, Info, ChevronDown, ChevronUp, Plus, Timer, ArrowLeft, MessageSquare, MoreVertical } from 'lucide-react';
 import { WorkoutPlan, TrackedWorkout, TrackedExercise } from '../types';
 
 /** Parse rest strings like '60s', '90s', '2 min', '2-3 min', '60-90s' into seconds (lower bound). */
@@ -89,6 +89,8 @@ export default function ActiveWorkout({
   });
 
   const [expandedExercise, setExpandedExercise] = useState<number | null>(0);
+  const [showTips, setShowTips] = useState<Record<number, boolean>>({});
+  const [showSwap, setShowSwap] = useState<Record<number, boolean>>({});
   const exerciseRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   // Rest timer state
@@ -361,7 +363,7 @@ export default function ActiveWorkout({
             >
               {/* Exercise Header */}
               <div
-                className="p-4 cursor-pointer flex items-center justify-between select-none active:bg-surface-3 transition-colors"
+                className="p-4 cursor-pointer flex items-center justify-between select-none active:bg-surface-3 transition-colors min-h-[52px]"
                 onClick={() =>
                   setExpandedExercise(isExpanded ? null : exIndex)
                 }
@@ -396,29 +398,42 @@ export default function ActiveWorkout({
                     </p>
                   </div>
                 </div>
-                {isExpanded ? (
-                  <ChevronUp className="w-4 h-4 text-zinc-600 shrink-0" />
-                ) : (
-                  <ChevronDown className="w-4 h-4 text-zinc-600 shrink-0" />
-                )}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {isExpanded && (
+                    <>
+                      <a
+                        href={`https://www.youtube.com/results?search_query=${encodeURIComponent(displayVideo)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-surface-3 transition-colors"
+                        title="Watch form video"
+                      >
+                        <PlayCircle className="w-4.5 h-4.5 text-orange-500" />
+                      </a>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setShowSwap(prev => ({ ...prev, [exIndex]: !prev[exIndex] })); }}
+                        className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-surface-3 transition-colors cursor-pointer"
+                        title="Swap exercise"
+                      >
+                        <MoreVertical className="w-4.5 h-4.5 text-zinc-500" />
+                      </button>
+                    </>
+                  )}
+                  {isExpanded ? (
+                    <ChevronUp className="w-4 h-4 text-zinc-600" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-zinc-600" />
+                  )}
+                </div>
               </div>
 
               {/* Expanded Content */}
               {isExpanded && (
                 <div className="px-4 pb-4 border-t border-border-subtle pt-4 space-y-4">
-                  {/* Expert Advice */}
-                  <div className="bg-orange-500/8 border border-orange-500/15 rounded-xl p-3.5">
-                    <p className="text-[10px] text-orange-500 uppercase tracking-wider font-medium mb-1.5 flex items-center gap-1">
-                      <Info className="w-3 h-3" /> FORM TIPS
-                    </p>
-                    <p className="text-[13px] text-orange-100/70 leading-relaxed">
-                      {cleanSupersetText(displayAdvice, isSupersetPartner)}
-                    </p>
-                  </div>
-
-                  {/* Alternatives & Video */}
-                  <div className="flex gap-3">
-                    <div className="flex-1 bg-ground/60 rounded-xl p-3">
+                  {/* Swap Exercise Panel (hidden by default) */}
+                  {showSwap[exIndex] && (
+                    <div className="bg-ground/60 rounded-xl p-3">
                       <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-medium mb-2">
                         SWAP EXERCISE
                       </p>
@@ -426,7 +441,7 @@ export default function ActiveWorkout({
                         {allSwapOptions.map((opt, i) => (
                           <div
                             key={i}
-                            className="flex items-center justify-between"
+                            className="flex items-center justify-between min-h-[36px]"
                           >
                             <span className="text-xs text-zinc-400 truncate mr-2">
                               {opt.name}
@@ -443,7 +458,7 @@ export default function ActiveWorkout({
                                 onClick={() =>
                                   selectAlternative(exIndex, opt.name)
                                 }
-                                className="text-[10px] bg-surface-3 hover:bg-elevated px-2 py-1 rounded text-zinc-400 transition-colors cursor-pointer shrink-0"
+                                className="text-[10px] bg-surface-3 hover:bg-elevated px-3 py-1.5 rounded text-zinc-400 transition-colors cursor-pointer shrink-0 min-h-[32px]"
                               >
                                 Use
                               </button>
@@ -452,20 +467,9 @@ export default function ActiveWorkout({
                         ))}
                       </div>
                     </div>
-                    <a
-                      href={`https://www.youtube.com/results?search_query=${encodeURIComponent(displayVideo)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-20 bg-ground/60 rounded-xl p-3 flex flex-col items-center justify-center text-center hover:bg-surface-1 transition-colors cursor-pointer group shrink-0"
-                    >
-                      <PlayCircle className="w-7 h-7 text-orange-500 mb-1 group-hover:scale-110 transition-transform" />
-                      <p className="text-[9px] font-bold text-zinc-500">
-                        VIDEO
-                      </p>
-                    </a>
-                  </div>
+                  )}
 
-                  {/* Set Tracking */}
+                  {/* Set Tracking (PRIMARY — shown first) */}
                   <div>
                     <div className="grid grid-cols-[2rem_1fr_1fr] gap-2 px-1 text-[10px] font-medium text-zinc-600 uppercase tracking-wider mb-2">
                       <div className="text-center">Set</div>
@@ -505,7 +509,7 @@ export default function ActiveWorkout({
                               parseFloat(e.target.value) || 0
                             )
                           }
-                          className="w-full bg-ground/60 border border-border-subtle rounded-lg px-2 py-3 text-center text-base text-white focus:outline-none focus:border-orange-500/50 transition-colors"
+                          className="w-full bg-ground/60 border border-border-subtle rounded-lg px-2 py-3 text-center text-base text-white focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 transition-colors min-h-[44px]"
                         />
                         <input
                           type="number"
@@ -520,14 +524,14 @@ export default function ActiveWorkout({
                               Number(e.target.value)
                             )
                           }
-                          className="w-full bg-ground/60 border border-border-subtle rounded-lg px-2 py-3 text-center text-base text-white focus:outline-none focus:border-orange-500/50 transition-colors"
+                          className="w-full bg-ground/60 border border-border-subtle rounded-lg px-2 py-3 text-center text-base text-white focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 transition-colors min-h-[44px]"
                         />
                       </div>
                     ))}
 
                     <button
                       onClick={() => addSet(exIndex)}
-                      className="w-full py-2 mt-2 border border-dashed border-border rounded-lg text-xs text-zinc-600 hover:text-zinc-400 hover:border-zinc-500 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                      className="w-full py-2.5 mt-2 border border-dashed border-border rounded-lg text-xs text-zinc-600 hover:text-zinc-400 hover:border-zinc-500 transition-colors flex items-center justify-center gap-1 cursor-pointer min-h-[44px]"
                     >
                       <Plus className="w-3 h-3" /> Add Set
                     </button>
@@ -537,7 +541,7 @@ export default function ActiveWorkout({
                   <button
                     onClick={() => startRestTimer(exIndex, ex.rest)}
                     disabled={isTimerRunning}
-                    className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                    className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer min-h-[44px] ${
                       isTimerRunning
                         ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
                         : 'bg-surface-3 text-zinc-300 hover:bg-elevated border border-border active:scale-[0.98]'
@@ -550,19 +554,36 @@ export default function ActiveWorkout({
                     }
                   </button>
 
-                  {/* Exercise Note */}
-                  <div className="bg-ground/60 rounded-xl p-3">
-                    <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-medium mb-2 flex items-center gap-1">
-                      <MessageSquare className="w-3 h-3" /> EXERCISE NOTES
-                    </p>
-                    <textarea
-                      placeholder="Add a note about this exercise..."
-                      value={trackedEx.note ?? ''}
-                      onChange={(e) => updateExerciseNote(exIndex, e.target.value)}
-                      rows={2}
-                      className="w-full bg-ground/60 border border-border-subtle rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-orange-500/50 transition-colors resize-none"
-                    />
-                  </div>
+                  {/* Form Tips (collapsed by default) */}
+                  <button
+                    onClick={() => setShowTips(prev => ({ ...prev, [exIndex]: !prev[exIndex] }))}
+                    className="w-full flex items-center justify-between py-2 text-left cursor-pointer min-h-[44px]"
+                  >
+                    <span className="text-[10px] text-orange-500 uppercase tracking-wider font-medium flex items-center gap-1">
+                      <Info className="w-3 h-3" /> FORM TIPS
+                    </span>
+                    {showTips[exIndex] ? (
+                      <ChevronUp className="w-3.5 h-3.5 text-zinc-600" />
+                    ) : (
+                      <ChevronDown className="w-3.5 h-3.5 text-zinc-600" />
+                    )}
+                  </button>
+                  {showTips[exIndex] && (
+                    <div className="bg-orange-500/8 border border-orange-500/15 rounded-xl p-3.5 -mt-2">
+                      <p className="text-[13px] text-orange-100/70 leading-relaxed">
+                        {cleanSupersetText(displayAdvice, isSupersetPartner)}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Exercise Note (simplified - borderless until focus) */}
+                  <textarea
+                    placeholder="Add a note about this exercise..."
+                    value={trackedEx.note ?? ''}
+                    onChange={(e) => updateExerciseNote(exIndex, e.target.value)}
+                    rows={2}
+                    className="w-full bg-transparent border border-transparent rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-border-subtle focus:bg-ground/60 transition-colors resize-none"
+                  />
                 </div>
               )}
             </div>
@@ -570,26 +591,25 @@ export default function ActiveWorkout({
         })}
       </div>
 
-      {/* Workout Day Note */}
-      <div className="mt-6 bg-surface-1 rounded-2xl p-5 shadow-card">
-        <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-medium mb-2 flex items-center gap-1">
-          <MessageSquare className="w-3 h-3" /> WORKOUT NOTES
-        </p>
+      {/* Workout Day Note (simplified) */}
+      <div className="mt-6">
         <textarea
-          placeholder="How did today's workout feel?"
+          placeholder="How did today's workout feel? Add notes here..."
           value={workoutNote}
           onChange={(e) => setWorkoutNote(e.target.value)}
           rows={3}
-          className="w-full bg-ground/60 border border-border-subtle rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-orange-500/50 transition-colors resize-none"
+          className="w-full bg-transparent border border-transparent rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-border-subtle focus:bg-surface-1 transition-colors resize-none"
         />
       </div>
 
       {/* Fixed Bottom CTA */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-ground via-ground to-transparent z-50">
-        <div className="max-w-lg mx-auto">
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border-subtle backdrop-blur-xl bg-ground/80">
+        <div className="max-w-lg mx-auto p-4">
           <button
             onClick={finishWorkout}
-            className="w-full py-4 bg-orange-500 hover:bg-orange-400 text-black font-extrabold text-base rounded-2xl transition-all shadow-lg shadow-orange-500/20 cursor-pointer active:scale-[0.98]"
+            className={`w-full py-4 bg-orange-500 hover:bg-orange-400 text-black font-extrabold text-base rounded-2xl transition-all shadow-xl shadow-orange-500/25 cursor-pointer active:scale-[0.98] min-h-[52px] ${
+              completedSets === totalSets && totalSets > 0 ? 'animate-pulse' : ''
+            }`}
           >
             Finish Workout
           </button>
