@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'motion/react';
-import { Play, CheckCircle, Quote, ChevronRight, MessageSquare } from 'lucide-react';
+import { Play, CheckCircle, ChevronRight, MessageSquare } from 'lucide-react';
 import { WorkoutPlan, TrackedWorkout } from '../types';
 import { loadWeeklyNotes, saveWeeklyNote } from '../services/tracking';
 
@@ -77,7 +77,7 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-orange-500/15 border border-orange-500/30 rounded-2xl p-4 flex items-center justify-between"
+          className="bg-gradient-to-r from-orange-500/15 to-transparent border border-orange-500/30 rounded-2xl p-4 flex items-center justify-between"
         >
           <div>
             <p className="text-sm font-bold text-orange-400">Workout in progress</p>
@@ -85,29 +85,28 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
               Week {resumeSession.week} · Day {resumeSession.day} — tap to continue
             </p>
           </div>
-          <button
+          <motion.button
             onClick={() => onStartWorkout(resumeSession.week, resumeSession.day)}
-            className="bg-orange-500 text-black px-4 py-2 rounded-xl text-sm font-bold cursor-pointer active:scale-95 transition-all min-h-[44px]"
+            animate={{ scale: [1, 1.05, 1] }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+            className="bg-orange-500 text-black px-4 py-2 rounded-xl text-sm font-bold cursor-pointer active:scale-95 transition-all min-h-[44px] flex items-center gap-1.5"
           >
+            <Play className="w-3.5 h-3.5 fill-current" />
             Resume
-          </button>
+          </motion.button>
         </motion.div>
       )}
 
       {/* Hero Card */}
-      <div className="relative bg-surface-1 rounded-2xl p-6 overflow-hidden shadow-card">
+      <div className="relative bg-gradient-to-br from-surface-1 to-surface-2 rounded-2xl p-6 overflow-hidden shadow-card border border-border-subtle">
         <div className="absolute -top-20 -right-20 w-60 h-60 bg-orange-500/8 rounded-full blur-3xl pointer-events-none" />
         <div className="relative">
           <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight mb-1">{plan.planName}</h2>
           <p className="text-zinc-400 text-xs sm:text-sm mb-4 leading-relaxed">{plan.splitDescription}</p>
 
           {/* Quote */}
-          <div className="flex items-start gap-3 bg-ground/60 rounded-xl p-4">
-            <Quote className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm text-zinc-300 italic leading-relaxed">"{plan.motivationalQuote}"</p>
-              <p className="text-xs text-zinc-500 mt-2 font-medium">— {plan.quoteAuthor}</p>
-            </div>
+          <div className="border-l-2 border-orange-500/30 pl-3">
+            <p className="text-xs text-zinc-500 italic leading-relaxed">"{plan.motivationalQuote}" — {plan.quoteAuthor}</p>
           </div>
         </div>
       </div>
@@ -191,6 +190,7 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
           const completed = trackedWorkouts.some(
             (tw) => tw.weekNumber === activeWeek && tw.dayNumber === day.dayNumber && tw.completed
           );
+          const focusEmoji = getMuscleEmoji(day.focus);
 
           return (
             <motion.div
@@ -199,20 +199,20 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.05 }}
               className={`bg-surface-2 rounded-2xl p-5 sm:p-6 transition-all shadow-card ${
-                completed ? 'ring-1 ring-orange-500/30' : ''
+                completed ? 'ring-1 ring-orange-500/30 opacity-70' : ''
               }`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3 min-w-0">
                   <div
-                    className={`w-11 h-11 rounded-xl flex items-center justify-center font-mono text-base font-semibold shrink-0 mt-0.5 ${
-                      completed ? 'bg-orange-500/15 text-orange-500' : 'bg-surface-3 text-zinc-500'
+                    className={`w-11 h-11 rounded-xl flex items-center justify-center text-lg shrink-0 mt-0.5 ${
+                      completed ? 'bg-orange-500/15' : 'bg-surface-3'
                     }`}
                   >
-                    {completed ? <CheckCircle className="w-5 h-5" /> : `D${day.dayNumber}`}
+                    {completed ? <CheckCircle className="w-5 h-5 text-orange-500" /> : focusEmoji}
                   </div>
                   <div className="min-w-0">
-                    <h3 className="font-semibold text-sm leading-snug">{day.focus}</h3>
+                    <h3 className={`font-semibold text-sm leading-snug ${completed ? 'line-through text-zinc-500' : ''}`}>{day.focus}</h3>
                     {day.description && (
                       <p className="text-[11px] text-zinc-400 leading-relaxed mt-0.5">
                         {day.description}
@@ -262,6 +262,22 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
       </div>
     </motion.div>
   );
+}
+
+function getMuscleEmoji(focus: string): string {
+  const f = focus.toLowerCase();
+  if (f.includes('chest')) return '🏋️';
+  if (f.includes('back')) return '🔙';
+  if (f.includes('leg') || f.includes('quad') || f.includes('ham')) return '🦵';
+  if (f.includes('shoulder') || f.includes('delt')) return '💪';
+  if (f.includes('arm') || f.includes('bicep') || f.includes('tricep')) return '💪';
+  if (f.includes('core') || f.includes('ab')) return '🔥';
+  if (f.includes('pull')) return '🔙';
+  if (f.includes('push')) return '🏋️';
+  if (f.includes('upper')) return '💪';
+  if (f.includes('lower')) return '🦵';
+  if (f.includes('full') || f.includes('total')) return '⚡';
+  return '🏋️';
 }
 
 function ProgressRing({ percent }: { percent: number }) {

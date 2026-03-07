@@ -1,3 +1,4 @@
-good job now make all of the tier 3 changes in the ui_design_review. then commit
-to github so i can test your changes, then go back to sleep and read prompt.txt
+good job now make all of the tier 4 changes in the ui_design_review. then commit
+ it to github so i can test your changes, then go back to sleep and read prompt.txt
+ 
 

@@ -200,32 +200,30 @@ export default function App() {
     <div className="min-h-screen bg-ground text-zinc-100 font-sans selection:bg-orange-500/30">
       {/* Header */}
       <header className="border-b border-border-subtle bg-ground/80 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center">
-              <Dumbbell className="w-4.5 h-4.5 text-black" />
+        <div className="max-w-lg mx-auto px-4 h-12 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-orange-500 flex items-center justify-center">
+              <Dumbbell className="w-3.5 h-3.5 text-black" />
             </div>
             <div>
-              <h1 className="font-extrabold text-base leading-none tracking-tight">
+              <h1 className="font-extrabold text-sm leading-none tracking-tight">
                 JACOB<span className="text-orange-500">'S</span>
               </h1>
-              <p className="text-[9px] text-zinc-600 uppercase tracking-[0.2em] font-semibold leading-none mt-0.5">
-                Workout Planner
-              </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             {plan && !activeWorkout && currentTab === 'workouts' && (
               <button
                 onClick={resetPlan}
-                className="text-xs text-zinc-500 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer px-3 py-1.5 rounded-lg hover:bg-surface-1"
+                className="text-zinc-500 hover:text-white transition-colors cursor-pointer p-2 rounded-lg hover:bg-surface-1 min-h-[36px] min-w-[36px] flex items-center justify-center"
+                title="New Plan"
               >
-                <RefreshCw className="w-3 h-3" /> New Plan
+                <RefreshCw className="w-3.5 h-3.5" />
               </button>
             )}
             <button
               onClick={signOut}
-              className="text-xs text-zinc-500 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer px-2 py-1.5 rounded-lg hover:bg-surface-1"
+              className="text-zinc-500 hover:text-white transition-colors cursor-pointer p-2 rounded-lg hover:bg-surface-1 min-h-[36px] min-w-[36px] flex items-center justify-center"
               title={user.email ?? 'Log out'}
             >
               <LogOut className="w-3.5 h-3.5" />

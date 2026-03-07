@@ -283,7 +283,7 @@ export default function ActiveWorkout({
       className="max-w-lg mx-auto pb-28"
     >
       {/* Sticky Header */}
-      <div className="flex items-center justify-between mb-6 sticky top-14 bg-ground/95 backdrop-blur-md py-3 z-40 border-b border-border-subtle">
+      <div className="flex items-center justify-between mb-6 sticky top-12 bg-ground/95 backdrop-blur-md py-3 z-40 border-b border-border-subtle">
         <div className="min-w-0 mr-3">
           <p className="text-orange-500 text-[10px] font-medium tracking-widest mb-0.5">
             WEEK {week} · DAY {day}
@@ -312,26 +312,45 @@ export default function ActiveWorkout({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.95 }}
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-            className={`sticky top-[7.5rem] z-30 mb-3 rounded-xl p-3 flex items-center justify-between transition-colors ${
+            className={`sticky top-[6.75rem] z-30 mb-3 rounded-xl overflow-hidden transition-colors ${
               timerComplete
                 ? 'bg-green-500/20 border border-green-500/30'
                 : 'bg-orange-500/15 border border-orange-500/25'
             }`}
           >
-          <div className="flex items-center gap-2">
-            <Timer className={`w-4 h-4 ${timerComplete ? 'text-green-400' : 'text-orange-500'}`} />
-            <span className="text-sm font-bold">
-              {timerComplete ? (
-                <span className="text-green-400">REST COMPLETE — GO!</span>
-              ) : (
-                <span className="text-orange-300 font-mono text-lg">{formatTime(timerSecondsLeft)}</span>
-              )}
-            </span>
+          <div className="p-3 flex items-center justify-between relative z-10">
+            <div className="flex items-center gap-2">
+              <Timer className={`w-4 h-4 ${timerComplete ? 'text-green-400' : 'text-orange-500'}`} />
+              <span className="text-sm font-bold">
+                {timerComplete ? (
+                  <motion.span
+                    className="text-green-400"
+                    animate={{ opacity: [1, 0.5, 1] }}
+                    transition={{ duration: 0.6, repeat: 2 }}
+                  >
+                    REST COMPLETE — GO!
+                  </motion.span>
+                ) : (
+                  <span className="text-orange-300 font-mono text-lg">{formatTime(timerSecondsLeft)}</span>
+                )}
+              </span>
+            </div>
+            {!timerComplete && (
+              <span className="text-[11px] text-zinc-400 font-medium">
+                {workoutDay.exercises[activeTimer!.exIndex]?.name}
+              </span>
+            )}
           </div>
-          {!timerComplete && (
-            <span className="text-[10px] text-zinc-500">
-              {workoutDay.exercises[activeTimer!.exIndex]?.name}
-            </span>
+          {/* Timer progress bar */}
+          {!timerComplete && activeTimer && (
+            <div className="h-1 w-full bg-orange-500/10">
+              <motion.div
+                className="h-full bg-gradient-to-r from-orange-500 to-green-500"
+                initial={{ width: '0%' }}
+                animate={{ width: `${((activeTimer.totalSeconds - timerSecondsLeft) / activeTimer.totalSeconds) * 100}%` }}
+                transition={{ duration: 0.25, ease: 'linear' }}
+              />
+            </div>
           )}
         </motion.div>
         )}

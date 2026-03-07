@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, ChevronRight, Trophy, ArrowLeft, Dumbbell, Calendar, Loader2, TrendingUp } from 'lucide-react';
+import { Search, ChevronRight, Trophy, ArrowLeft, Dumbbell, Calendar, TrendingUp } from 'lucide-react';
 import {
   getDistinctExercises,
   getExerciseHistory,
@@ -42,9 +42,16 @@ export default function History() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-24">
-        <Loader2 className="w-6 h-6 text-orange-500 animate-spin mb-3" />
-        <p className="text-zinc-500 text-sm">Loading history...</p>
+      <div className="space-y-4 py-2">
+        <div className="h-5 bg-surface-1 rounded w-40 animate-pulse" />
+        <div className="h-3 bg-surface-1 rounded w-56 animate-pulse" />
+        <div className="h-11 bg-surface-1 rounded-full animate-pulse mt-4" />
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="bg-surface-1 rounded-xl p-4 shadow-card animate-pulse">
+            <div className="h-4 bg-surface-3 rounded w-2/3 mb-2" />
+            <div className="h-3 bg-surface-3 rounded w-1/3" />
+          </div>
+        ))}
       </div>
     );
   }
@@ -72,26 +79,34 @@ export default function History() {
 
           {exercises.length === 0 ? (
             <div className="text-center py-16">
-              <div className="w-14 h-14 rounded-2xl bg-surface-1 flex items-center justify-center mx-auto mb-4">
-                <Dumbbell className="w-7 h-7 text-zinc-600" />
+              <div className="w-16 h-16 rounded-2xl bg-surface-1 flex items-center justify-center mx-auto mb-4 shadow-card">
+                <Dumbbell className="w-8 h-8 text-zinc-600" />
               </div>
-              <p className="text-zinc-400 font-semibold mb-1">No History Yet</p>
-              <p className="text-zinc-600 text-sm max-w-xs mx-auto">
-                Complete a workout to start tracking your exercise history here.
+              <p className="text-zinc-300 font-bold text-lg mb-1">No History Yet</p>
+              <p className="text-zinc-500 text-sm max-w-[260px] mx-auto leading-relaxed">
+                Complete your first workout to start tracking your exercise progress here.
               </p>
             </div>
           ) : (
             <>
               {/* Search */}
               <div className="relative mb-4">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
                 <input
                   type="text"
                   placeholder="Search exercises..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full bg-surface-1 border border-border-subtle rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 transition-colors min-h-[44px]"
+                  className="w-full bg-ground border border-border rounded-full pl-12 pr-4 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 transition-colors min-h-[44px]"
                 />
+                {search && (
+                  <button
+                    onClick={() => setSearch('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white text-xs cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
 
               {/* Exercise List */}
@@ -159,9 +174,19 @@ function ExerciseDetail({
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-24">
-        <Loader2 className="w-6 h-6 text-orange-500 animate-spin mb-3" />
-        <p className="text-zinc-500 text-sm">Loading {exerciseName}...</p>
+      <div className="space-y-4 py-2">
+        <div className="h-4 bg-surface-1 rounded w-24 animate-pulse" />
+        <div className="h-5 bg-surface-1 rounded w-48 animate-pulse" />
+        <div className="bg-surface-1 rounded-xl p-4 h-16 animate-pulse shadow-card" />
+        <div className="bg-surface-1 rounded-xl p-4 h-52 animate-pulse shadow-card" />
+        {[1, 2].map((i) => (
+          <div key={i} className="bg-surface-1 rounded-xl p-4 shadow-card animate-pulse">
+            <div className="h-3 bg-surface-3 rounded w-1/3 mb-3" />
+            <div className="h-3 bg-surface-3 rounded w-full mb-1" />
+            <div className="h-3 bg-surface-3 rounded w-full mb-1" />
+            <div className="h-3 bg-surface-3 rounded w-2/3" />
+          </div>
+        ))}
       </div>
     );
   }
