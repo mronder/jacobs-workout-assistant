@@ -1,3 +1,2 @@
-commit this version to gh so i can test the changes
-then you have to run a terminal command to sleep for 4 seconds
-following that you have to come back and read prompt.txt
+commit this most recent version to GitHub so I can test it and then 
+go back to sleep and then read prompt.txt

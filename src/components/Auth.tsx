@@ -58,7 +58,7 @@ export default function Auth() {
           <Dumbbell className="w-5 h-5 text-black" />
         </div>
         <div>
-          <h1 className="font-black text-lg leading-none tracking-tight">
+          <h1 className="font-extrabold text-lg leading-none tracking-tight">
             JACOB<span className="text-orange-500">'S</span>
           </h1>
           <p className="text-[9px] text-zinc-600 uppercase tracking-[0.2em] font-semibold leading-none mt-0.5">
@@ -69,7 +69,7 @@ export default function Auth() {
 
       {/* Form Card */}
       <div className="w-full max-w-sm">
-        <h2 className="text-xl font-black mb-1 tracking-tight text-center">
+        <h2 className="text-xl font-extrabold mb-1 tracking-tight text-center">
           {mode === 'login' ? 'Welcome Back' : 'Create Account'}
         </h2>
         <p className="text-zinc-500 text-sm text-center mb-6">
@@ -87,7 +87,7 @@ export default function Auth() {
               placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-[#111] border border-[#222] rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-orange-500/50 transition-colors"
+              className="w-full bg-surface-1 border border-border-subtle rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-orange-500/50 transition-colors"
               autoComplete="email"
             />
           </div>
@@ -100,7 +100,7 @@ export default function Auth() {
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-[#111] border border-[#222] rounded-xl pl-10 pr-10 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-orange-500/50 transition-colors"
+              className="w-full bg-surface-1 border border-border-subtle rounded-xl pl-10 pr-10 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-orange-500/50 transition-colors"
               autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
             />
             <button
@@ -126,7 +126,7 @@ export default function Auth() {
                 placeholder="Confirm Password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full bg-[#111] border border-[#222] rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-orange-500/50 transition-colors"
+                className="w-full bg-surface-1 border border-border-subtle rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-orange-500/50 transition-colors"
                 autoComplete="new-password"
               />
             </motion.div>
@@ -147,7 +147,7 @@ export default function Auth() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold text-sm py-3 rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-semibold text-sm py-3 rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer"
           >
             {loading ? (
               <Loader2 className="w-4 h-4 animate-spin" />

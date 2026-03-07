@@ -66,13 +66,13 @@ export default function History() {
         >
           {/* Header */}
           <div className="mb-5">
-            <h2 className="text-xl font-black tracking-tight mb-1">Exercise History</h2>
+            <h2 className="text-xl font-extrabold tracking-tight mb-1">Exercise History</h2>
             <p className="text-zinc-500 text-sm">Track your progress over time</p>
           </div>
 
           {exercises.length === 0 ? (
             <div className="text-center py-16">
-              <div className="w-14 h-14 rounded-2xl bg-[#111] border border-[#1a1a1a] flex items-center justify-center mx-auto mb-4">
+              <div className="w-14 h-14 rounded-2xl bg-surface-1 flex items-center justify-center mx-auto mb-4">
                 <Dumbbell className="w-7 h-7 text-zinc-600" />
               </div>
               <p className="text-zinc-400 font-semibold mb-1">No History Yet</p>
@@ -90,7 +90,7 @@ export default function History() {
                   placeholder="Search exercises..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full bg-[#111] border border-[#1a1a1a] rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-orange-500/50 transition-colors"
+                  className="w-full bg-surface-1 border border-border-subtle rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-orange-500/50 transition-colors"
                 />
               </div>
 
@@ -100,7 +100,7 @@ export default function History() {
                   <motion.button
                     key={ex.exerciseName}
                     onClick={() => setSelectedExercise(ex.exerciseName)}
-                    className="w-full bg-[#111] hover:bg-[#151515] border border-[#1a1a1a] rounded-xl px-4 py-3 flex items-center justify-between transition-colors cursor-pointer text-left"
+                    className="w-full bg-surface-2 hover:bg-surface-3 rounded-xl px-4 py-3 flex items-center justify-between transition-colors cursor-pointer text-left shadow-card"
                     whileTap={{ scale: 0.98 }}
                   >
                     <div className="flex-1 min-w-0">
@@ -181,7 +181,7 @@ function ExerciseDetail({
         <ArrowLeft className="w-4 h-4" /> All Exercises
       </button>
 
-      <h2 className="text-lg font-black tracking-tight mb-4">{exerciseName}</h2>
+      <h2 className="text-lg font-extrabold tracking-tight mb-4">{exerciseName}</h2>
 
       {/* PR Banner */}
       {pr && pr.maxWeight > 0 && (
@@ -190,7 +190,7 @@ function ExerciseDetail({
             <Trophy className="w-5 h-5 text-orange-500" />
           </div>
           <div>
-            <p className="text-xs text-orange-400 font-semibold uppercase tracking-wider mb-0.5">Personal Record</p>
+            <p className="text-xs text-orange-400 font-medium uppercase tracking-wider mb-0.5">Personal Record</p>
             <p className="text-white font-bold text-sm">
               {pr.maxWeight} lbs
               {pr.maxVolume > 0 && (
@@ -210,7 +210,7 @@ function ExerciseDetail({
 
       {/* Session List */}
       <div className="mb-20">
-        <p className="text-xs text-zinc-500 font-semibold uppercase tracking-wider mb-3 flex items-center gap-1.5">
+        <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider mb-3 flex items-center gap-1.5">
           <TrendingUp className="w-3.5 h-3.5" /> Session History
         </p>
 
@@ -221,7 +221,7 @@ function ExerciseDetail({
             {sessions.map((session, idx) => (
               <div
                 key={idx}
-                className="bg-[#111] border border-[#1a1a1a] rounded-xl p-4"
+                className="bg-surface-1 border border-border-subtle rounded-xl p-4"
               >
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
@@ -236,7 +236,7 @@ function ExerciseDetail({
                 </div>
 
                 {/* Sets table */}
-                <div className="grid grid-cols-3 gap-1 text-[10px] text-zinc-600 uppercase tracking-wider font-semibold mb-1.5 px-1">
+                <div className="grid grid-cols-3 gap-1 text-[10px] text-zinc-600 uppercase tracking-wider font-medium mb-1.5 px-1">
                   <span>Set</span>
                   <span className="text-center">Weight</span>
                   <span className="text-right">Reps</span>

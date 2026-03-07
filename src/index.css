@@ -6,9 +6,14 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   --color-accent: #f97316;
   --color-accent-hover: #fb923c;
-  --color-surface: #111111;
-  --color-surface-elevated: #1a1a1a;
-  --color-border: #222222;
+  --color-ground: #0a0a0a;
+  --color-surface-1: #0f0f0f;
+  --color-surface-2: #141414;
+  --color-surface-3: #1a1a1a;
+  --color-elevated: #1e1e1e;
+  --color-border: #1e1e1e;
+  --color-border-subtle: #191919;
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
 * {

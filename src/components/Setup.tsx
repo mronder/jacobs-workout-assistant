@@ -44,7 +44,7 @@ export default function Setup({ onGenerate }: SetupProps) {
           <Flame className="w-3.5 h-3.5" />
           AI-POWERED WORKOUT PLAN
         </motion.div>
-        <h2 className="text-4xl sm:text-5xl font-black tracking-tight leading-tight mb-3">
+        <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight leading-tight mb-3">
           Your Plan.<br />
           <span className="text-orange-500">Your Rules.</span>
         </h2>
@@ -60,9 +60,9 @@ export default function Setup({ onGenerate }: SetupProps) {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
-          className="bg-[#111] rounded-2xl p-5 border border-[#222]"
+          className="bg-surface-1 rounded-2xl p-6 shadow-card"
         >
-          <label className="flex items-center gap-2 text-sm font-bold text-zinc-300 mb-4">
+          <label className="flex items-center gap-2 text-sm font-semibold text-zinc-300 mb-4">
             <Target className="w-4 h-4 text-orange-500" />
             DAYS PER WEEK
           </label>
@@ -74,7 +74,7 @@ export default function Setup({ onGenerate }: SetupProps) {
                 className={`flex-1 h-14 rounded-xl font-mono text-xl font-bold transition-all duration-200 cursor-pointer ${
                   days === d
                     ? 'bg-orange-500 text-black shadow-lg shadow-orange-500/25 scale-105'
-                    : 'bg-[#1a1a1a] text-zinc-500 hover:text-zinc-300 hover:bg-[#222] border border-[#222]'
+                    : 'bg-surface-3 text-zinc-500 hover:text-zinc-300 hover:bg-elevated'
                 }`}
               >
                 {d}
@@ -88,9 +88,9 @@ export default function Setup({ onGenerate }: SetupProps) {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25 }}
-          className="bg-[#111] rounded-2xl p-5 border border-[#222]"
+          className="bg-surface-1 rounded-2xl p-6 shadow-card"
         >
-          <label className="flex items-center gap-2 text-sm font-bold text-zinc-300 mb-4">
+          <label className="flex items-center gap-2 text-sm font-semibold text-zinc-300 mb-4">
             <Flame className="w-4 h-4 text-orange-500" />
             PRIMARY GOAL
           </label>
@@ -103,10 +103,10 @@ export default function Setup({ onGenerate }: SetupProps) {
                   // Clear secondary if it matches the new primary
                   if (secondaryGoal === g.value) setSecondaryGoal(null);
                 }}
-                className={`flex items-center gap-3 p-4 rounded-xl text-left transition-all duration-200 cursor-pointer border ${
+                className={`flex items-center gap-3 p-4 rounded-xl text-left transition-all duration-200 cursor-pointer ${
                   goal === g.value
-                    ? 'bg-orange-500/10 border-orange-500/50 text-white'
-                    : 'bg-[#1a1a1a] border-transparent text-zinc-400 hover:bg-[#222] hover:text-zinc-200'
+                    ? 'bg-orange-500/10 ring-1 ring-orange-500/50 text-white'
+                    : 'bg-surface-3 text-zinc-400 hover:bg-elevated hover:text-zinc-200'
                 }`}
               >
                 <span className="text-xl">{g.icon}</span>
@@ -121,9 +121,9 @@ export default function Setup({ onGenerate }: SetupProps) {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-[#111] rounded-2xl p-5 border border-[#222]"
+          className="bg-surface-1 rounded-2xl p-6 shadow-card"
         >
-          <label className="flex items-center gap-2 text-sm font-bold text-zinc-300 mb-2">
+          <label className="flex items-center gap-2 text-sm font-semibold text-zinc-300 mb-2">
             <Target className="w-4 h-4 text-orange-500" />
             SECONDARY GOAL
             <span className="text-[11px] font-normal text-zinc-500 ml-1">(optional)</span>
@@ -138,10 +138,10 @@ export default function Setup({ onGenerate }: SetupProps) {
                   onClick={() =>
                     setSecondaryGoal(secondaryGoal === g.value ? null : g.value)
                   }
-                  className={`flex items-center gap-3 p-4 rounded-xl text-left transition-all duration-200 cursor-pointer border ${
+                  className={`flex items-center gap-3 p-4 rounded-xl text-left transition-all duration-200 cursor-pointer ${
                     secondaryGoal === g.value
-                      ? 'bg-blue-500/10 border-blue-500/50 text-white'
-                      : 'bg-[#1a1a1a] border-transparent text-zinc-400 hover:bg-[#222] hover:text-zinc-200'
+                      ? 'bg-blue-500/10 ring-1 ring-blue-500/50 text-white'
+                      : 'bg-surface-3 text-zinc-400 hover:bg-elevated hover:text-zinc-200'
                   }`}
                 >
                   <span className="text-xl">{g.icon}</span>
@@ -156,9 +156,9 @@ export default function Setup({ onGenerate }: SetupProps) {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="bg-[#111] rounded-2xl p-5 border border-[#222]"
+          className="bg-surface-1 rounded-2xl p-6 shadow-card"
         >
-          <label className="flex items-center gap-2 text-sm font-bold text-zinc-300 mb-4">
+          <label className="flex items-center gap-2 text-sm font-semibold text-zinc-300 mb-4">
             <Zap className="w-4 h-4 text-orange-500" />
             EXPERIENCE LEVEL
           </label>
@@ -167,13 +167,13 @@ export default function Setup({ onGenerate }: SetupProps) {
               <button
                 key={l.value}
                 onClick={() => setLevel(l.value)}
-                className={`flex-1 py-4 rounded-xl text-center transition-all duration-200 cursor-pointer border ${
+                className={`flex-1 py-4 rounded-xl text-center transition-all duration-200 cursor-pointer ${
                   level === l.value
-                    ? 'bg-orange-500/10 border-orange-500/50 text-white'
-                    : 'bg-[#1a1a1a] border-transparent text-zinc-400 hover:bg-[#222] hover:text-zinc-200'
+                    ? 'bg-orange-500/10 ring-1 ring-orange-500/50 text-white'
+                    : 'bg-surface-3 text-zinc-400 hover:bg-elevated hover:text-zinc-200'
                 }`}
               >
-                <div className="text-sm font-bold">{l.label}</div>
+                <div className="text-sm font-semibold">{l.label}</div>
                 <div className="text-[11px] text-zinc-500 mt-0.5">{l.desc}</div>
               </button>
             ))}

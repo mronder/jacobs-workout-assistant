@@ -95,25 +95,25 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
       )}
 
       {/* Hero Card */}
-      <div className="relative bg-[#111] border border-[#222] rounded-2xl p-5 overflow-hidden">
+      <div className="relative bg-surface-1 rounded-2xl p-6 overflow-hidden shadow-card">
         <div className="absolute -top-20 -right-20 w-60 h-60 bg-orange-500/8 rounded-full blur-3xl pointer-events-none" />
         <div className="relative">
-          <h2 className="text-xl sm:text-2xl font-black tracking-tight mb-1">{plan.planName}</h2>
+          <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight mb-1">{plan.planName}</h2>
           <p className="text-zinc-400 text-xs sm:text-sm mb-4 leading-relaxed">{plan.splitDescription}</p>
 
           {/* Quote */}
-          <div className="flex items-start gap-3 bg-black/30 rounded-xl p-4 border border-[#1a1a1a]">
+          <div className="flex items-start gap-3 bg-ground/60 rounded-xl p-4">
             <Quote className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
             <div>
               <p className="text-sm text-zinc-300 italic leading-relaxed">"{plan.motivationalQuote}"</p>
-              <p className="text-xs text-zinc-500 mt-2 font-semibold">— {plan.quoteAuthor}</p>
+              <p className="text-xs text-zinc-500 mt-2 font-medium">— {plan.quoteAuthor}</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-3.5">
         <StatCard label="Progress" value={`${progress}%`} />
         <StatCard label="Completed" value={`${completedCount}`} />
         <StatCard label="Remaining" value={`${totalWorkouts - completedCount}`} />
@@ -132,10 +132,10 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
             <button
               key={w}
               onClick={() => setActiveWeek(w)}
-              className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 min-w-[80px] justify-center ${
                 activeWeek === w
-                  ? 'bg-white text-black'
-                  : 'bg-[#111] text-zinc-500 hover:text-zinc-300 border border-[#222]'
+                  ? 'bg-orange-500 text-black'
+                  : 'bg-surface-2 text-zinc-500 hover:text-zinc-300'
               }`}
             >
               Week {w}
@@ -146,12 +146,12 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
       </div>
 
       {/* Weekly Note */}
-      <div className="bg-[#111] border border-[#222] rounded-2xl overflow-hidden">
+      <div className="bg-surface-1 rounded-2xl overflow-hidden shadow-card">
         <button
           onClick={() => setShowWeekNote(!showWeekNote)}
-          className="w-full px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-[#1a1a1a] transition-colors"
+          className="w-full px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-surface-3 transition-colors"
         >
-          <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold flex items-center gap-1.5">
+          <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-medium flex items-center gap-1.5">
             <MessageSquare className="w-3 h-3" /> WEEK {activeWeek} NOTES
             {weeklyNotes[activeWeek] && (
               <span className="w-1.5 h-1.5 rounded-full bg-orange-500 inline-block" />
@@ -166,14 +166,14 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
               value={weeklyNotes[activeWeek] ?? ''}
               onChange={(e) => handleWeekNoteChange(e.target.value)}
               rows={3}
-              className="w-full bg-black/40 border border-[#222] rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-orange-500/50 transition-colors resize-none"
+              className="w-full bg-ground/60 border border-border-subtle rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-orange-500/50 transition-colors resize-none"
             />
           </div>
         )}
       </div>
 
       {/* Day Cards */}
-      <div className="space-y-3">
+      <div className="space-y-3.5">
         {currentWeek?.days.map((day, idx) => {
           const completed = trackedWorkouts.some(
             (tw) => tw.weekNumber === activeWeek && tw.dayNumber === day.dayNumber && tw.completed
@@ -185,21 +185,21 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.05 }}
-              className={`bg-[#111] border rounded-2xl p-4 sm:p-5 transition-all ${
-                completed ? 'border-orange-500/30' : 'border-[#222]'
+              className={`bg-surface-2 rounded-2xl p-5 sm:p-6 transition-all shadow-card ${
+                completed ? 'ring-1 ring-orange-500/30' : ''
               }`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3 min-w-0">
                   <div
-                    className={`w-11 h-11 rounded-xl flex items-center justify-center font-mono text-base font-bold shrink-0 mt-0.5 ${
-                      completed ? 'bg-orange-500/15 text-orange-500' : 'bg-[#1a1a1a] text-zinc-500'
+                    className={`w-11 h-11 rounded-xl flex items-center justify-center font-mono text-base font-semibold shrink-0 mt-0.5 ${
+                      completed ? 'bg-orange-500/15 text-orange-500' : 'bg-surface-3 text-zinc-500'
                     }`}
                   >
                     {completed ? <CheckCircle className="w-5 h-5" /> : `D${day.dayNumber}`}
                   </div>
                   <div className="min-w-0">
-                    <h3 className="font-bold text-sm leading-snug">{day.focus}</h3>
+                    <h3 className="font-semibold text-sm leading-snug">{day.focus}</h3>
                     {day.description && (
                       <p className="text-[11px] text-zinc-400 leading-relaxed mt-0.5">
                         {day.description}
@@ -213,7 +213,7 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
                   onClick={() => onStartWorkout(activeWeek, day.dayNumber)}
                   className={`shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer active:scale-95 ${
                     completed
-                      ? 'bg-[#1a1a1a] text-zinc-300 hover:bg-[#222]'
+                      ? 'bg-surface-3 text-zinc-300 hover:bg-elevated'
                       : 'bg-orange-500 text-black hover:bg-orange-400'
                   }`}
                 >
@@ -227,7 +227,7 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
                 {day.exercises.slice(0, 4).map((ex, i) => (
                   <div
                     key={i}
-                    className="bg-black/30 rounded-lg px-3 py-2 border border-[#1a1a1a] shrink-0"
+                    className="bg-ground/60 rounded-lg px-3 py-2 shrink-0"
                   >
                     <p className="text-[11px] font-semibold text-zinc-400 truncate max-w-[120px]">
                       {ex.name}
@@ -238,7 +238,7 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
                   </div>
                 ))}
                 {day.exercises.length > 4 && (
-                  <div className="bg-black/30 rounded-lg px-3 py-2 border border-[#1a1a1a] shrink-0 flex items-center">
+                  <div className="bg-ground/60 rounded-lg px-3 py-2 shrink-0 flex items-center">
                     <p className="text-[11px] text-zinc-600 font-mono">+{day.exercises.length - 4}</p>
                   </div>
                 )}
@@ -253,9 +253,9 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-center">
-      <div className="text-2xl font-black font-mono text-white">{value}</div>
-      <div className="text-[10px] text-zinc-500 uppercase tracking-widest mt-1 font-semibold">{label}</div>
+    <div className="bg-surface-1 rounded-xl p-4 text-center shadow-card">
+      <div className="text-2xl font-extrabold font-mono text-white">{value}</div>
+      <div className="text-[10px] text-zinc-500 uppercase tracking-widest mt-1 font-medium">{label}</div>
     </div>
   );
 }

@@ -277,12 +277,12 @@ export default function ActiveWorkout({
       className="max-w-lg mx-auto pb-28"
     >
       {/* Sticky Header */}
-      <div className="flex items-center justify-between mb-6 sticky top-14 bg-[#0a0a0a]/95 backdrop-blur-md py-3 z-40 border-b border-[#1a1a1a]">
+      <div className="flex items-center justify-between mb-6 sticky top-14 bg-ground/95 backdrop-blur-md py-3 z-40 border-b border-border-subtle">
         <div className="min-w-0 mr-3">
-          <p className="text-orange-500 text-[10px] font-bold tracking-widest mb-0.5">
+          <p className="text-orange-500 text-[10px] font-medium tracking-widest mb-0.5">
             WEEK {week} · DAY {day}
           </p>
-          <h2 className="text-sm sm:text-base font-black leading-snug">{workoutDay.focus}</h2>
+          <h2 className="text-sm sm:text-base font-bold leading-snug">{workoutDay.focus}</h2>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xs text-zinc-500 font-mono">
@@ -290,7 +290,7 @@ export default function ActiveWorkout({
           </span>
           <button
             onClick={onCancel}
-            className="w-9 h-9 bg-[#111] border border-[#222] rounded-full flex items-center justify-center hover:bg-[#1a1a1a] transition-colors cursor-pointer"
+            className="w-9 h-9 bg-surface-2 rounded-full flex items-center justify-center hover:bg-surface-3 transition-colors cursor-pointer"
             title="Back to dashboard"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -324,7 +324,7 @@ export default function ActiveWorkout({
       )}
 
       {/* Exercise List */}
-      <div className="space-y-3">
+      <div className="space-y-3.5">
         {workoutDay.exercises.map((ex, exIndex) => {
           const isExpanded = expandedExercise === exIndex;
           const trackedEx = trackedData[exIndex];
@@ -355,23 +355,23 @@ export default function ActiveWorkout({
               ref={(el) => {
                 exerciseRefs.current[exIndex] = el;
               }}
-              className={`bg-[#111] border rounded-2xl overflow-hidden transition-all ${
-                allDone ? 'border-orange-500/40' : 'border-[#222]'
+              className={`bg-surface-1 rounded-2xl overflow-hidden transition-all shadow-card ${
+                allDone ? 'ring-1 ring-orange-500/40' : ''
               }`}
             >
               {/* Exercise Header */}
               <div
-                className="p-4 cursor-pointer flex items-center justify-between select-none active:bg-[#1a1a1a] transition-colors"
+                className="p-4 cursor-pointer flex items-center justify-between select-none active:bg-surface-3 transition-colors"
                 onClick={() =>
                   setExpandedExercise(isExpanded ? null : exIndex)
                 }
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div
-                    className={`w-9 h-9 rounded-full flex items-center justify-center border shrink-0 text-sm font-bold ${
+                    className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-sm font-semibold ${
                       allDone
-                        ? 'bg-orange-500 border-orange-500 text-black'
-                        : 'border-[#333] text-zinc-500'
+                        ? 'bg-orange-500 text-black'
+                        : 'border border-border text-zinc-500'
                     }`}
                   >
                     {allDone ? (
@@ -382,11 +382,11 @@ export default function ActiveWorkout({
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-sm truncate">
+                      <h3 className="font-semibold text-sm truncate">
                         {trackedEx.exerciseName}
                       </h3>
                       {trackedEx.exerciseName !== ex.name && (
-                        <span className="text-[9px] text-orange-500 bg-orange-500/10 px-1.5 py-0.5 rounded font-bold shrink-0">
+                        <span className="text-[9px] text-orange-500 bg-orange-500/10 px-1.5 py-0.5 rounded font-semibold shrink-0">
                           ALT
                         </span>
                       )}
@@ -405,10 +405,10 @@ export default function ActiveWorkout({
 
               {/* Expanded Content */}
               {isExpanded && (
-                <div className="px-4 pb-4 border-t border-[#1a1a1a] pt-4 space-y-4">
+                <div className="px-4 pb-4 border-t border-border-subtle pt-4 space-y-4">
                   {/* Expert Advice */}
                   <div className="bg-orange-500/8 border border-orange-500/15 rounded-xl p-3.5">
-                    <p className="text-[10px] text-orange-500 uppercase tracking-wider font-bold mb-1.5 flex items-center gap-1">
+                    <p className="text-[10px] text-orange-500 uppercase tracking-wider font-medium mb-1.5 flex items-center gap-1">
                       <Info className="w-3 h-3" /> FORM TIPS
                     </p>
                     <p className="text-[13px] text-orange-100/70 leading-relaxed">
@@ -418,8 +418,8 @@ export default function ActiveWorkout({
 
                   {/* Alternatives & Video */}
                   <div className="flex gap-3">
-                    <div className="flex-1 bg-[#0a0a0a] rounded-xl p-3 border border-[#1a1a1a]">
-                      <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold mb-2">
+                    <div className="flex-1 bg-ground/60 rounded-xl p-3">
+                      <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-medium mb-2">
                         SWAP EXERCISE
                       </p>
                       <div className="space-y-1.5">
@@ -443,7 +443,7 @@ export default function ActiveWorkout({
                                 onClick={() =>
                                   selectAlternative(exIndex, opt.name)
                                 }
-                                className="text-[10px] bg-[#1a1a1a] hover:bg-[#222] px-2 py-1 rounded text-zinc-400 transition-colors cursor-pointer shrink-0"
+                                className="text-[10px] bg-surface-3 hover:bg-elevated px-2 py-1 rounded text-zinc-400 transition-colors cursor-pointer shrink-0"
                               >
                                 Use
                               </button>
@@ -456,7 +456,7 @@ export default function ActiveWorkout({
                       href={`https://www.youtube.com/results?search_query=${encodeURIComponent(displayVideo)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="w-20 bg-[#0a0a0a] rounded-xl p-3 border border-[#1a1a1a] flex flex-col items-center justify-center text-center hover:bg-[#111] transition-colors cursor-pointer group shrink-0"
+                      className="w-20 bg-ground/60 rounded-xl p-3 flex flex-col items-center justify-center text-center hover:bg-surface-1 transition-colors cursor-pointer group shrink-0"
                     >
                       <PlayCircle className="w-7 h-7 text-orange-500 mb-1 group-hover:scale-110 transition-transform" />
                       <p className="text-[9px] font-bold text-zinc-500">
@@ -467,13 +467,13 @@ export default function ActiveWorkout({
 
                   {/* Set Tracking */}
                   <div>
-                    <div className="grid grid-cols-[2rem_1fr_1fr] gap-2 px-1 text-[10px] font-bold text-zinc-600 uppercase tracking-wider mb-2">
+                    <div className="grid grid-cols-[2rem_1fr_1fr] gap-2 px-1 text-[10px] font-medium text-zinc-600 uppercase tracking-wider mb-2">
                       <div className="text-center">Set</div>
                       <div className="flex items-center gap-1.5">
                         Weight
                         <button
                           onClick={(e) => { e.stopPropagation(); toggleWeightUnit(exIndex); }}
-                          className="text-[9px] bg-[#1a1a1a] hover:bg-[#222] px-1.5 py-0.5 rounded text-orange-500 font-bold transition-colors cursor-pointer normal-case"
+                          className="text-[9px] bg-surface-3 hover:bg-elevated px-1.5 py-0.5 rounded text-orange-500 font-semibold transition-colors cursor-pointer normal-case"
                         >
                           {trackedEx.weightUnit ?? 'lbs'}
                         </button>
@@ -485,10 +485,10 @@ export default function ActiveWorkout({
                       <div
                         key={setIndex}
                         className={`grid grid-cols-[2rem_1fr_1fr] gap-2 items-center py-1.5 px-1 rounded-xl transition-colors ${
-                          set.completed ? 'bg-orange-500/8' : ''
+                          set.completed ? 'bg-orange-500/12' : ''
                         }`}
                       >
-                        <div className={`text-center font-mono text-xs transition-colors ${set.completed ? 'text-orange-500 font-bold' : 'text-zinc-500'}`}>
+                        <div className={`text-center font-mono text-sm transition-colors ${set.completed ? 'text-orange-500 font-bold' : 'text-zinc-500'}`}>
                           {set.completed ? '✓' : setIndex + 1}
                         </div>
                         <input
@@ -505,7 +505,7 @@ export default function ActiveWorkout({
                               parseFloat(e.target.value) || 0
                             )
                           }
-                          className="w-full bg-black/40 border border-[#222] rounded-lg px-2 py-2.5 text-center text-sm text-white focus:outline-none focus:border-orange-500/50 transition-colors"
+                          className="w-full bg-ground/60 border border-border-subtle rounded-lg px-2 py-3 text-center text-base text-white focus:outline-none focus:border-orange-500/50 transition-colors"
                         />
                         <input
                           type="number"
@@ -520,14 +520,14 @@ export default function ActiveWorkout({
                               Number(e.target.value)
                             )
                           }
-                          className="w-full bg-black/40 border border-[#222] rounded-lg px-2 py-2.5 text-center text-sm text-white focus:outline-none focus:border-orange-500/50 transition-colors"
+                          className="w-full bg-ground/60 border border-border-subtle rounded-lg px-2 py-3 text-center text-base text-white focus:outline-none focus:border-orange-500/50 transition-colors"
                         />
                       </div>
                     ))}
 
                     <button
                       onClick={() => addSet(exIndex)}
-                      className="w-full py-2 mt-2 border border-dashed border-[#222] rounded-lg text-xs text-zinc-600 hover:text-zinc-400 hover:border-zinc-500 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                      className="w-full py-2 mt-2 border border-dashed border-border rounded-lg text-xs text-zinc-600 hover:text-zinc-400 hover:border-zinc-500 transition-colors flex items-center justify-center gap-1 cursor-pointer"
                     >
                       <Plus className="w-3 h-3" /> Add Set
                     </button>
@@ -540,7 +540,7 @@ export default function ActiveWorkout({
                     className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
                       isTimerRunning
                         ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
-                        : 'bg-[#1a1a1a] text-zinc-300 hover:bg-[#222] border border-[#333] active:scale-[0.98]'
+                        : 'bg-surface-3 text-zinc-300 hover:bg-elevated border border-border active:scale-[0.98]'
                     }`}
                   >
                     <Timer className="w-4 h-4" />
@@ -551,8 +551,8 @@ export default function ActiveWorkout({
                   </button>
 
                   {/* Exercise Note */}
-                  <div className="bg-[#0a0a0a] rounded-xl border border-[#1a1a1a] p-3">
-                    <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold mb-2 flex items-center gap-1">
+                  <div className="bg-ground/60 rounded-xl p-3">
+                    <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-medium mb-2 flex items-center gap-1">
                       <MessageSquare className="w-3 h-3" /> EXERCISE NOTES
                     </p>
                     <textarea
@@ -560,7 +560,7 @@ export default function ActiveWorkout({
                       value={trackedEx.note ?? ''}
                       onChange={(e) => updateExerciseNote(exIndex, e.target.value)}
                       rows={2}
-                      className="w-full bg-black/40 border border-[#222] rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-orange-500/50 transition-colors resize-none"
+                      className="w-full bg-ground/60 border border-border-subtle rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-orange-500/50 transition-colors resize-none"
                     />
                   </div>
                 </div>
@@ -571,8 +571,8 @@ export default function ActiveWorkout({
       </div>
 
       {/* Workout Day Note */}
-      <div className="mt-6 bg-[#111] border border-[#222] rounded-2xl p-4">
-        <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold mb-2 flex items-center gap-1">
+      <div className="mt-6 bg-surface-1 rounded-2xl p-5 shadow-card">
+        <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-medium mb-2 flex items-center gap-1">
           <MessageSquare className="w-3 h-3" /> WORKOUT NOTES
         </p>
         <textarea
@@ -580,12 +580,12 @@ export default function ActiveWorkout({
           value={workoutNote}
           onChange={(e) => setWorkoutNote(e.target.value)}
           rows={3}
-          className="w-full bg-black/40 border border-[#222] rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-orange-500/50 transition-colors resize-none"
+          className="w-full bg-ground/60 border border-border-subtle rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-orange-500/50 transition-colors resize-none"
         />
       </div>
 
       {/* Fixed Bottom CTA */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a] to-transparent z-50">
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-ground via-ground to-transparent z-50">
         <div className="max-w-lg mx-auto">
           <button
             onClick={finishWorkout}

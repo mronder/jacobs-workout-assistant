@@ -162,7 +162,7 @@ export default function App() {
   /* ---- Auth loading state ---- */
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+      <div className="min-h-screen bg-ground flex items-center justify-center">
         <Loader2 className="w-6 h-6 text-orange-500 animate-spin" />
       </div>
     );
@@ -171,7 +171,7 @@ export default function App() {
   /* ---- Not logged in ---- */
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] text-zinc-100 font-sans selection:bg-orange-500/30">
+      <div className="min-h-screen bg-ground text-zinc-100 font-sans selection:bg-orange-500/30">
         <Auth />
       </div>
     );
@@ -181,16 +181,16 @@ export default function App() {
   const showBottomNav = !activeWorkout && !isGenerating;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-zinc-100 font-sans selection:bg-orange-500/30">
+    <div className="min-h-screen bg-ground text-zinc-100 font-sans selection:bg-orange-500/30">
       {/* Header */}
-      <header className="border-b border-[#1a1a1a] bg-[#0a0a0a]/80 backdrop-blur-xl sticky top-0 z-50">
+      <header className="border-b border-border-subtle bg-ground/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center">
               <Dumbbell className="w-4.5 h-4.5 text-black" />
             </div>
             <div>
-              <h1 className="font-black text-base leading-none tracking-tight">
+              <h1 className="font-extrabold text-base leading-none tracking-tight">
                 JACOB<span className="text-orange-500">'S</span>
               </h1>
               <p className="text-[9px] text-zinc-600 uppercase tracking-[0.2em] font-semibold leading-none mt-0.5">
@@ -202,14 +202,14 @@ export default function App() {
             {plan && !activeWorkout && currentTab === 'workouts' && (
               <button
                 onClick={resetPlan}
-                className="text-xs text-zinc-500 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer px-3 py-1.5 rounded-lg hover:bg-[#111]"
+                className="text-xs text-zinc-500 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer px-3 py-1.5 rounded-lg hover:bg-surface-1"
               >
                 <RefreshCw className="w-3 h-3" /> New Plan
               </button>
             )}
             <button
               onClick={signOut}
-              className="text-xs text-zinc-500 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer px-2 py-1.5 rounded-lg hover:bg-[#111]"
+              className="text-xs text-zinc-500 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer px-2 py-1.5 rounded-lg hover:bg-surface-1"
               title={user.email ?? 'Log out'}
             >
               <LogOut className="w-3.5 h-3.5" />
@@ -294,7 +294,7 @@ function LoadingScreen() {
       className="flex flex-col items-center justify-center py-32 text-center"
     >
       <div className="relative w-20 h-20 mb-8">
-        <div className="absolute inset-0 border-2 border-[#222] rounded-full" />
+        <div className="absolute inset-0 border-2 border-border rounded-full" />
         <motion.div
           className="absolute inset-0 border-2 border-orange-500 rounded-full border-t-transparent"
           animate={{ rotate: 360 }}
@@ -304,7 +304,7 @@ function LoadingScreen() {
           <Flame className="w-7 h-7 text-orange-500" />
         </div>
       </div>
-      <h2 className="text-xl font-black mb-3 tracking-tight">Building Your Plan</h2>
+      <h2 className="text-xl font-extrabold mb-3 tracking-tight">Building Your Plan</h2>
       <AnimatePresence mode="wait">
         <motion.p
           key={msgIdx}

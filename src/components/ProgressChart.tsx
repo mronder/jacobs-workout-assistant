@@ -11,7 +11,7 @@ interface ProgressChartProps {
 export default function ProgressChart({ data }: ProgressChartProps) {
   if (data.length < 2) {
     return (
-      <div className="bg-[#111] border border-[#1a1a1a] rounded-xl p-6 text-center">
+      <div className="bg-surface-1 rounded-xl p-6 text-center shadow-card">
         <p className="text-zinc-500 text-sm">
           {data.length === 1
             ? 'Need at least 2 sessions to show a chart.'
@@ -56,8 +56,8 @@ export default function ProgressChart({ data }: ProgressChartProps) {
         ];
 
   return (
-    <div className="bg-[#111] border border-[#1a1a1a] rounded-xl p-4">
-      <p className="text-xs text-zinc-500 font-semibold uppercase tracking-wider mb-3">
+    <div className="bg-surface-1 rounded-xl p-4 shadow-card">
+      <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider mb-3">
         Weight Progression
       </p>
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" preserveAspectRatio="xMidYMid meet">
