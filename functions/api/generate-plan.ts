@@ -166,8 +166,8 @@ RULES:
 4. videoSearchQuery = short YouTube search string for the exercise.
 5. focus = short title, 1-5 words max. Example: "Chest & Triceps".
 6. description = 1-2 sentences explaining what muscle areas/sections are targeted and why. For example for a chest day: "Focus on upper, mid, and lower pec development with heavy compounds for thickness and flyes for width." Be specific about anatomy.
-7. Do NOT use the word "superset" in any field unless you are explicitly pairing two consecutive exercises to be performed back-to-back. If you use "superset", both the current exercise AND the next exercise must reference each other as superset partners in their rest field.${secondaryGoal ? `
-8. Where appropriate, incorporate exercise selection, rep ranges, or rest periods that also serve the secondary goal of ${secondaryGoal}. For example, if the secondary goal is Fat Loss, include supersets or shorter rest periods; if Strength, include heavier compound movements.` : ''}
+7. Include at least ONE superset pair per day. A superset pair must be two consecutive exercises whose rest fields BOTH mention "Superset with [partner exercise name]". For example if exercises 3 and 4 are a superset, exercise 3's rest should say "Superset with [Exercise 4 name] — 60s rest after both" and exercise 4's rest should say "Superset with [Exercise 3 name] — 60s rest after both". Both exercises must cross-reference each other.${secondaryGoal ? `
+8. Where appropriate, incorporate exercise selection, rep ranges, or rest periods that also serve the secondary goal of ${secondaryGoal}. For example, if the secondary goal is Fat Loss, include 2-3 superset pairs and shorter rest periods; if Strength, include heavier compound movements with longer rests (and still include at least one superset for antagonist or accessory pairing).` : ''}
 ${secondaryGoal ? '9' : '8'}. Return dayNumber as ${dayNumber}.`;
 }
 
