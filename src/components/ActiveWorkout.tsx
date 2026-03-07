@@ -423,23 +423,300 @@ export default function ActiveWorkout({
           const supersetLabel = getSupersetLabel(exIndex);
           const isFirstInSuperset = isSupersetStart(exIndex);
 
-          return (
-            <div key={exIndex}>
-              {/* Superset header label */}
-              {isFirstInSuperset && (
+          // Skip A2 exercises — they're rendered inside the A1 superset card
+          if (supersetLabel === 'A2') return null;
+
+          // --- Superset Combined Card ---
+          if (isFirstInSuperset && exIndex + 1 < workoutDay.exercises.length && trackedData[exIndex + 1]) {
+            const ex2 = workoutDay.exercises[exIndex + 1];
+            const trackedEx2 = trackedData[exIndex + 1];
+            const allDone2 = trackedEx2.sets.every((s) => s.completed);
+            const bothDone = allDone && allDone2;
+
+            const currentAlt2 = ex2.alternatives.find((a) => a.name === trackedEx2.exerciseName);
+            const displayAdvice2 = currentAlt2?.expertAdvice || ex2.expertAdvice || 'Focus on proper form and controlled movements.';
+            const displayVideo2 = currentAlt2?.videoSearchQuery || ex2.videoSearchQuery || `${trackedEx2.exerciseName} exercise form tutorial`;
+
+            const allSwapOptions2 = [
+              { name: ex2.name, isOriginal: true },
+              ...ex2.alternatives.filter(a => a.name !== ex2.name).map(a => ({ name: a.name, isOriginal: false })),
+            ];
+
+            const maxSets = Math.max(trackedEx.sets.length, trackedEx2.sets.length);
+
+            return (
+              <div key={exIndex}>
+                {/* Superset header */}
                 <div className="flex items-center gap-2 mb-2 mt-1">
                   <div className="h-px flex-1 bg-purple-500/20" />
                   <span className="text-[10px] font-bold text-purple-400 uppercase tracking-widest">Superset</span>
                   <div className="h-px flex-1 bg-purple-500/20" />
                 </div>
-              )}
+
+                <div
+                  ref={(el) => { exerciseRefs.current[exIndex] = el; }}
+                  className={`bg-surface-1 rounded-2xl overflow-hidden transition-all shadow-card border-l-2 border-l-purple-500/40 ${
+                    bothDone ? 'ring-1 ring-orange-500/40' : ''
+                  }`}
+                >
+                  {/* Combined Header — both exercises */}
+                  <div
+                    className="p-4 cursor-pointer select-none active:bg-surface-3 transition-colors min-h-[52px]"
+                    onClick={() => setExpandedExercise(isExpanded ? null : exIndex)}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-semibold ${
+                          bothDone ? 'bg-orange-500 text-black' : 'border border-border text-zinc-500'
+                        }`}>
+                          {bothDone ? <Check className="w-3.5 h-3.5" /> : <span className="font-mono">{exIndex + 1}</span>}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[9px] text-purple-400 bg-purple-500/10 px-1 py-0.5 rounded font-bold">A1</span>
+                            <h3 className="font-semibold text-sm leading-snug line-clamp-1">{trackedEx.exerciseName}</h3>
+                            {trackedEx.exerciseName !== ex.name && (
+                              <span className="text-[9px] text-orange-500 bg-orange-500/10 px-1 py-0.5 rounded font-semibold shrink-0">ALT</span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-zinc-500 font-mono">{ex.sets}×{ex.reps} · {displayRest}</p>
+                        </div>
+                      </div>
+                      {isExpanded ? <ChevronUp className="w-4 h-4 text-zinc-600 shrink-0" /> : <ChevronDown className="w-4 h-4 text-zinc-600 shrink-0" />}
+                    </div>
+
+                    <div className="flex items-center gap-2 min-w-0 pl-10">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[9px] text-purple-400 bg-purple-500/10 px-1 py-0.5 rounded font-bold">A2</span>
+                        <h3 className="font-semibold text-sm leading-snug line-clamp-1">{trackedEx2.exerciseName}</h3>
+                        {trackedEx2.exerciseName !== ex2.name && (
+                          <span className="text-[9px] text-orange-500 bg-orange-500/10 px-1 py-0.5 rounded font-semibold shrink-0">ALT</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Expanded — dual tracking grid */}
+                  {isExpanded && (
+                    <div className="px-4 pb-4 border-t border-border-subtle pt-4 space-y-4">
+                      {/* Swap panels for both exercises */}
+                      {showSwap[exIndex] && (
+                        <div className="bg-ground/60 rounded-xl p-3">
+                          <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-medium mb-2">SWAP A1 — {trackedEx.exerciseName}</p>
+                          <div className="space-y-1.5">
+                            {allSwapOptions.map((opt, i) => (
+                              <div key={i} className="flex items-center justify-between min-h-[36px]">
+                                <span className="text-xs text-zinc-400 truncate mr-2">{opt.name}</span>
+                                {trackedEx.exerciseName === opt.name ? (
+                                  <span className="text-[10px] text-orange-500 font-bold shrink-0">Active</span>
+                                ) : (
+                                  <button onClick={() => selectAlternative(exIndex, opt.name)} className="text-[10px] bg-surface-3 hover:bg-elevated px-3 py-1.5 rounded text-zinc-400 transition-colors cursor-pointer shrink-0 min-h-[32px]">Use</button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {showSwap[exIndex + 1] && (
+                        <div className="bg-ground/60 rounded-xl p-3">
+                          <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-medium mb-2">SWAP A2 — {trackedEx2.exerciseName}</p>
+                          <div className="space-y-1.5">
+                            {allSwapOptions2.map((opt, i) => (
+                              <div key={i} className="flex items-center justify-between min-h-[36px]">
+                                <span className="text-xs text-zinc-400 truncate mr-2">{opt.name}</span>
+                                {trackedEx2.exerciseName === opt.name ? (
+                                  <span className="text-[10px] text-orange-500 font-bold shrink-0">Active</span>
+                                ) : (
+                                  <button onClick={() => selectAlternative(exIndex + 1, opt.name)} className="text-[10px] bg-surface-3 hover:bg-elevated px-3 py-1.5 rounded text-zinc-400 transition-colors cursor-pointer shrink-0 min-h-[32px]">Use</button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Action buttons */}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setShowSwap(prev => ({ ...prev, [exIndex]: !prev[exIndex] })); }}
+                          className="flex-1 py-2 rounded-lg text-[10px] font-medium text-zinc-400 bg-surface-2 hover:bg-surface-3 transition-colors cursor-pointer"
+                        >Swap A1</button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setShowSwap(prev => ({ ...prev, [exIndex + 1]: !prev[exIndex + 1] })); }}
+                          className="flex-1 py-2 rounded-lg text-[10px] font-medium text-zinc-400 bg-surface-2 hover:bg-surface-3 transition-colors cursor-pointer"
+                        >Swap A2</button>
+                        <a
+                          href={`https://www.youtube.com/results?search_query=${encodeURIComponent(displayVideo)}`}
+                          target="_blank" rel="noopener noreferrer"
+                          className="py-2 px-3 rounded-lg bg-surface-2 hover:bg-surface-3 transition-colors"
+                        ><PlayCircle className="w-4 h-4 text-orange-500" /></a>
+                        <a
+                          href={`https://www.youtube.com/results?search_query=${encodeURIComponent(displayVideo2)}`}
+                          target="_blank" rel="noopener noreferrer"
+                          className="py-2 px-3 rounded-lg bg-surface-2 hover:bg-surface-3 transition-colors"
+                        ><PlayCircle className="w-4 h-4 text-purple-400" /></a>
+                      </div>
+
+                      {/* Dual Tracking Grid */}
+                      <div>
+                        {/* Header row */}
+                        <div className="grid grid-cols-[2rem_1fr_1fr_1fr_1fr] gap-1.5 px-1 text-[9px] font-medium text-zinc-600 uppercase tracking-wider mb-2">
+                          <div className="text-center">Set</div>
+                          <div className="text-center">
+                            <span className="text-purple-400">A1</span> Wt
+                            <button
+                              onClick={(e) => { e.stopPropagation(); toggleWeightUnit(exIndex); }}
+                              className="text-[8px] bg-surface-3 hover:bg-elevated px-1 py-0.5 rounded text-orange-500 font-semibold transition-colors cursor-pointer normal-case ml-0.5"
+                            >{trackedEx.weightUnit ?? 'lbs'}</button>
+                          </div>
+                          <div className="text-center"><span className="text-purple-400">A1</span> Reps</div>
+                          <div className="text-center">
+                            <span className="text-purple-400">A2</span> Wt
+                            <button
+                              onClick={(e) => { e.stopPropagation(); toggleWeightUnit(exIndex + 1); }}
+                              className="text-[8px] bg-surface-3 hover:bg-elevated px-1 py-0.5 rounded text-orange-500 font-semibold transition-colors cursor-pointer normal-case ml-0.5"
+                            >{trackedEx2.weightUnit ?? 'lbs'}</button>
+                          </div>
+                          <div className="text-center"><span className="text-purple-400">A2</span> Reps</div>
+                        </div>
+
+                        {/* Set rows — one row per set, both exercises side by side */}
+                        {Array.from({ length: maxSets }).map((_, setIndex) => {
+                          const set1 = trackedEx.sets[setIndex];
+                          const set2 = trackedEx2.sets[setIndex];
+                          const rowDone = (set1?.completed ?? false) && (set2?.completed ?? false);
+
+                          return (
+                            <div
+                              key={setIndex}
+                              className={`grid grid-cols-[2rem_1fr_1fr_1fr_1fr] gap-1.5 items-center py-1 px-1 rounded-xl transition-colors ${
+                                rowDone ? 'bg-orange-500/12' : ''
+                              }`}
+                            >
+                              <div className={`text-center font-mono text-sm transition-colors ${rowDone ? 'text-orange-500 font-bold' : 'text-zinc-500'}`}>
+                                {rowDone ? (
+                                  <motion.span key="check" initial={{ scale: 0.5 }} animate={{ scale: [0.5, 1.2, 1] }} transition={{ duration: 0.25 }}>✓</motion.span>
+                                ) : (
+                                  setIndex + 1
+                                )}
+                              </div>
+                              {/* A1 weight */}
+                              {set1 ? (
+                                <input
+                                  type="number" inputMode="decimal" step="any" placeholder="0"
+                                  value={set1.weight || ''}
+                                  onChange={(e) => updateSet(exIndex, setIndex, 'weight', parseFloat(e.target.value) || 0)}
+                                  className="w-full bg-ground/60 border border-border-subtle rounded-lg px-1.5 py-2.5 text-center text-sm text-white focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 transition-colors min-h-[40px]"
+                                />
+                              ) : <div />}
+                              {/* A1 reps */}
+                              {set1 ? (
+                                <input
+                                  type="number" inputMode="numeric" placeholder={ex.reps.split('-')[0] || '0'}
+                                  value={set1.reps || ''}
+                                  onChange={(e) => updateSet(exIndex, setIndex, 'reps', Number(e.target.value))}
+                                  className="w-full bg-ground/60 border border-border-subtle rounded-lg px-1.5 py-2.5 text-center text-sm text-white focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 transition-colors min-h-[40px]"
+                                />
+                              ) : <div />}
+                              {/* A2 weight */}
+                              {set2 ? (
+                                <input
+                                  type="number" inputMode="decimal" step="any" placeholder="0"
+                                  value={set2.weight || ''}
+                                  onChange={(e) => updateSet(exIndex + 1, setIndex, 'weight', parseFloat(e.target.value) || 0)}
+                                  className="w-full bg-ground/60 border border-purple-500/20 rounded-lg px-1.5 py-2.5 text-center text-sm text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30 transition-colors min-h-[40px]"
+                                />
+                              ) : <div />}
+                              {/* A2 reps */}
+                              {set2 ? (
+                                <input
+                                  type="number" inputMode="numeric" placeholder={ex2.reps.split('-')[0] || '0'}
+                                  value={set2.reps || ''}
+                                  onChange={(e) => updateSet(exIndex + 1, setIndex, 'reps', Number(e.target.value))}
+                                  className="w-full bg-ground/60 border border-purple-500/20 rounded-lg px-1.5 py-2.5 text-center text-sm text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30 transition-colors min-h-[40px]"
+                                />
+                              ) : <div />}
+                            </div>
+                          );
+                        })}
+
+                        <div className="flex gap-2 mt-2">
+                          <button
+                            onClick={() => addSet(exIndex)}
+                            className="flex-1 py-2 border border-dashed border-border rounded-lg text-xs text-zinc-600 hover:text-zinc-400 hover:border-zinc-500 transition-colors flex items-center justify-center gap-1 cursor-pointer min-h-[40px]"
+                          ><Plus className="w-3 h-3" /> A1 Set</button>
+                          <button
+                            onClick={() => addSet(exIndex + 1)}
+                            className="flex-1 py-2 border border-dashed border-purple-500/20 rounded-lg text-xs text-zinc-600 hover:text-zinc-400 hover:border-purple-500/40 transition-colors flex items-center justify-center gap-1 cursor-pointer min-h-[40px]"
+                          ><Plus className="w-3 h-3" /> A2 Set</button>
+                        </div>
+                      </div>
+
+                      {/* Rest Timer */}
+                      <button
+                        onClick={() => startRestTimer(exIndex, displayRest)}
+                        disabled={activeTimer?.exIndex === exIndex}
+                        className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer min-h-[44px] ${
+                          activeTimer?.exIndex === exIndex
+                            ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+                            : 'bg-surface-3 text-zinc-300 hover:bg-elevated border border-border active:scale-[0.98]'
+                        }`}
+                      >
+                        <Timer className="w-4 h-4" />
+                        {activeTimer?.exIndex === exIndex ? `Resting... ${formatTime(timerSecondsLeft)}` : `Start Rest (${displayRest})`}
+                      </button>
+
+                      {/* Form Tips */}
+                      <button
+                        onClick={() => setShowTips(prev => ({ ...prev, [exIndex]: !prev[exIndex] }))}
+                        className="w-full flex items-center justify-between py-2 text-left cursor-pointer min-h-[44px]"
+                      >
+                        <span className="text-[10px] text-orange-500 uppercase tracking-wider font-medium flex items-center gap-1">
+                          <Info className="w-3 h-3" /> FORM TIPS
+                        </span>
+                        {showTips[exIndex] ? <ChevronUp className="w-3.5 h-3.5 text-zinc-600" /> : <ChevronDown className="w-3.5 h-3.5 text-zinc-600" />}
+                      </button>
+                      {showTips[exIndex] && (
+                        <div className="bg-orange-500/8 border border-orange-500/15 rounded-xl p-3.5 -mt-2 space-y-2">
+                          <p className="text-[10px] text-purple-400 font-bold uppercase">A1 — {trackedEx.exerciseName}</p>
+                          <p className="text-[13px] text-orange-100/70 leading-relaxed">{cleanSupersetText(displayAdvice, true)}</p>
+                          <p className="text-[10px] text-purple-400 font-bold uppercase mt-2">A2 — {trackedEx2.exerciseName}</p>
+                          <p className="text-[13px] text-orange-100/70 leading-relaxed">{cleanSupersetText(displayAdvice2, true)}</p>
+                        </div>
+                      )}
+
+                      {/* Notes for both exercises */}
+                      <div className="space-y-2">
+                        <textarea
+                          placeholder={`A1 note — ${trackedEx.exerciseName}...`}
+                          value={trackedEx.note ?? ''}
+                          onChange={(e) => updateExerciseNote(exIndex, e.target.value)}
+                          rows={1}
+                          className="w-full bg-transparent border border-transparent rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-border-subtle focus:bg-ground/60 transition-colors resize-none"
+                        />
+                        <textarea
+                          placeholder={`A2 note — ${trackedEx2.exerciseName}...`}
+                          value={trackedEx2.note ?? ''}
+                          onChange={(e) => updateExerciseNote(exIndex + 1, e.target.value)}
+                          rows={1}
+                          className="w-full bg-transparent border border-transparent rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-border-subtle focus:bg-ground/60 transition-colors resize-none"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          }
+
+          // --- Regular (non-superset) exercise card ---
+          return (
+            <div key={exIndex}>
               <div
-                ref={(el) => {
-                  exerciseRefs.current[exIndex] = el;
-                }}
+                ref={(el) => { exerciseRefs.current[exIndex] = el; }}
                 className={`bg-surface-1 rounded-2xl overflow-hidden transition-all shadow-card ${
                   allDone ? 'ring-1 ring-orange-500/40' : ''
-                } ${supersetLabel ? 'border-l-2 border-l-purple-500/40' : ''}`}
+                }`}
               >
               {/* Exercise Header */}
               <div

@@ -1,1 +1,8 @@
-Fix the critical edge cases and then commit to github then go back to sleep then read prompt.txt.
+It doesnt look like edge case two got fixed. for the cases when both excercises are listed
+in the same excercise card there is still only one spot to record data.
+we are losing data with this. we need to be able to track both, for example there is a superset with
+pushups and inverted rows and we wtill only have 1 weight and reps . lets set it up 
+so that for superset there is column 1 with sets then column 2 and 3 with weight and reps
+should both be 2 deep so we can track both excercises right next to eachother.
+make this change then commit to github then go to sleep then read prompt.txt.
+
