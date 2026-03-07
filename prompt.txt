@@ -1,16 +1,13 @@
-so it appears your solution was to totally remove supersets. 
-atleat when trying to create a new workout not sure why you thought
-that was the best solution, seems like ameture hour to me. nothing changed in my existing
-workout with supersets but any new workout i make doesnt come with supersets
-i tried mulitple times.
-i need you to dig to the root of the problem. remember the correct format for supersets is:
+no wrong again... Ive shown below how i want the table set up.
+Also in some of the workout there is a superset for excercise 1 and two and for 
+some reason it is counting it as 4 excercises. not sure why that happening.
+Fix all this and make it look like the table below. then go to sleep and read prompt.txt
 
-sets (a1:a2) Weight for excercise A (b1) Reps for excercist A (c1)
-Weight for excercise B (b2) Reps for excercist b (c2)
 
-please tell me if this makes sense to you. if it doesnt i will explain it again
-if it does than find the root of the problem and make the fix. make sure you are using
-best practices when coding. commit to github when youre done.
-my boss is watching you need to get this right i dont want to get fired.
-after you fix this correctly go to sleep then read prompt.txt
-
+Set	Weight	Reps
+1	Excercise A	Excercise A
+	Excercise B	Excercise B
+2	Excercise A	Excercise A
+	Excercise B	Excercise B
+3	Excercise A	Excercise A
+	Excercise B	Excercise B

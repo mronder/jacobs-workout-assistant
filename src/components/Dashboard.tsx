@@ -218,7 +218,18 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
                         {day.description}
                       </p>
                     )}
-                    <p className="text-[11px] text-zinc-500 mt-0.5">{day.exercises.length} exercises</p>
+                    <p className="text-[11px] text-zinc-500 mt-0.5">{(() => {
+                      const supersetPattern = /super\s*set/i;
+                      let count = 0;
+                      day.exercises.forEach((ex, i) => {
+                        const mentions = supersetPattern.test(ex.rest) || supersetPattern.test(ex.expertAdvice || '');
+                        const prev = day.exercises[i - 1];
+                        const prevMentions = prev && (supersetPattern.test(prev.rest) || supersetPattern.test(prev.expertAdvice || ''));
+                        const isA2 = mentions && prevMentions;
+                        if (!isA2) count++;
+                      });
+                      return count;
+                    })()} exercises</p>
                   </div>
                 </div>
 

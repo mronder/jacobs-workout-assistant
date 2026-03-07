@@ -397,7 +397,7 @@ export default function ActiveWorkout({
 
       {/* Exercise List */}
       <div className="space-y-3.5">
-        {workoutDay.exercises.map((ex, exIndex) => {
+        {(() => { let visualNum = 0; return workoutDay.exercises.map((ex, exIndex) => {
           const isExpanded = expandedExercise === exIndex;
           const trackedEx = trackedData[exIndex];
           const allDone = trackedEx.sets.every((s) => s.completed);
@@ -422,6 +422,9 @@ export default function ActiveWorkout({
           const isTimerRunning = activeTimer?.exIndex === exIndex;
           const supersetLabel = getSupersetLabel(exIndex);
           const isFirstInSuperset = isSupersetStart(exIndex);
+
+          // Track visual exercise number (A2 exercises don't get their own number)
+          if (supersetLabel !== 'A2') visualNum++;
 
           // Skip A2 exercises — they're rendered inside the A1 superset card
           if (supersetLabel === 'A2') return null;
@@ -469,7 +472,7 @@ export default function ActiveWorkout({
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-semibold ${
                           bothDone ? 'bg-orange-500 text-black' : 'border border-border text-zinc-500'
                         }`}>
-                          {bothDone ? <Check className="w-3.5 h-3.5" /> : <span className="font-mono">{exIndex + 1}</span>}
+                          {bothDone ? <Check className="w-3.5 h-3.5" /> : <span className="font-mono">{visualNum}</span>}
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
@@ -557,98 +560,94 @@ export default function ActiveWorkout({
                         ><PlayCircle className="w-4 h-4 text-purple-400" /></a>
                       </div>
 
-                      {/* Dual Tracking Grid */}
+                      {/* Dual Tracking Grid — stacked rows per set */}
                       <div>
                         {/* Header row */}
-                        <div className="grid grid-cols-[2rem_1fr_1fr_1fr_1fr] gap-1.5 px-1 text-[9px] font-medium text-zinc-600 uppercase tracking-wider mb-2">
+                        <div className="grid grid-cols-[2rem_1fr_1fr] gap-2 px-1 text-[10px] font-medium text-zinc-600 uppercase tracking-wider mb-2">
                           <div className="text-center">Set</div>
-                          <div className="text-center">
-                            <span className="text-purple-400">A1</span> Wt
+                          <div className="flex items-center gap-1.5">
+                            Weight
                             <button
-                              onClick={(e) => { e.stopPropagation(); toggleWeightUnit(exIndex); }}
-                              className="text-[8px] bg-surface-3 hover:bg-elevated px-1 py-0.5 rounded text-orange-500 font-semibold transition-colors cursor-pointer normal-case ml-0.5"
+                              onClick={(e) => { e.stopPropagation(); toggleWeightUnit(exIndex); toggleWeightUnit(exIndex + 1); }}
+                              className="text-[9px] bg-surface-3 hover:bg-elevated px-1.5 py-0.5 rounded text-orange-500 font-semibold transition-colors cursor-pointer normal-case"
                             >{trackedEx.weightUnit ?? 'lbs'}</button>
                           </div>
-                          <div className="text-center"><span className="text-purple-400">A1</span> Reps</div>
-                          <div className="text-center">
-                            <span className="text-purple-400">A2</span> Wt
-                            <button
-                              onClick={(e) => { e.stopPropagation(); toggleWeightUnit(exIndex + 1); }}
-                              className="text-[8px] bg-surface-3 hover:bg-elevated px-1 py-0.5 rounded text-orange-500 font-semibold transition-colors cursor-pointer normal-case ml-0.5"
-                            >{trackedEx2.weightUnit ?? 'lbs'}</button>
-                          </div>
-                          <div className="text-center"><span className="text-purple-400">A2</span> Reps</div>
+                          <div>Reps</div>
                         </div>
 
-                        {/* Set rows — one row per set, both exercises side by side */}
+                        {/* Set rows — two rows per set (A then B) */}
                         {Array.from({ length: maxSets }).map((_, setIndex) => {
                           const set1 = trackedEx.sets[setIndex];
                           const set2 = trackedEx2.sets[setIndex];
                           const rowDone = (set1?.completed ?? false) && (set2?.completed ?? false);
 
                           return (
-                            <div
-                              key={setIndex}
-                              className={`grid grid-cols-[2rem_1fr_1fr_1fr_1fr] gap-1.5 items-center py-1 px-1 rounded-xl transition-colors ${
-                                rowDone ? 'bg-orange-500/12' : ''
-                              }`}
-                            >
-                              <div className={`text-center font-mono text-sm transition-colors ${rowDone ? 'text-orange-500 font-bold' : 'text-zinc-500'}`}>
-                                {rowDone ? (
-                                  <motion.span key="check" initial={{ scale: 0.5 }} animate={{ scale: [0.5, 1.2, 1] }} transition={{ duration: 0.25 }}>✓</motion.span>
-                                ) : (
-                                  setIndex + 1
-                                )}
+                            <div key={setIndex} className={`rounded-xl transition-colors mb-1 ${rowDone ? 'bg-orange-500/12' : ''}`}>
+                              {/* Exercise A row */}
+                              <div className="grid grid-cols-[2rem_1fr_1fr] gap-2 items-center py-1 px-1">
+                                <div className={`text-center font-mono text-sm transition-colors row-span-2 ${rowDone ? 'text-orange-500 font-bold' : 'text-zinc-500'}`}>
+                                  {rowDone ? (
+                                    <motion.span key="check" initial={{ scale: 0.5 }} animate={{ scale: [0.5, 1.2, 1] }} transition={{ duration: 0.25 }}>✓</motion.span>
+                                  ) : (
+                                    setIndex + 1
+                                  )}
+                                </div>
+                                {set1 ? (
+                                  <>
+                                    <input
+                                      type="number" inputMode="decimal" step="any" placeholder="0"
+                                      value={set1.weight || ''}
+                                      onChange={(e) => updateSet(exIndex, setIndex, 'weight', parseFloat(e.target.value) || 0)}
+                                      className="w-full bg-ground/60 border border-border-subtle rounded-lg px-2 py-2.5 text-center text-sm text-white focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 transition-colors min-h-[40px]"
+                                    />
+                                    <input
+                                      type="number" inputMode="numeric" placeholder={ex.reps.split('-')[0] || '0'}
+                                      value={set1.reps || ''}
+                                      onChange={(e) => updateSet(exIndex, setIndex, 'reps', Number(e.target.value))}
+                                      className="w-full bg-ground/60 border border-border-subtle rounded-lg px-2 py-2.5 text-center text-sm text-white focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 transition-colors min-h-[40px]"
+                                    />
+                                  </>
+                                ) : <><div /><div /></>}
                               </div>
-                              {/* A1 weight */}
-                              {set1 ? (
-                                <input
-                                  type="number" inputMode="decimal" step="any" placeholder="0"
-                                  value={set1.weight || ''}
-                                  onChange={(e) => updateSet(exIndex, setIndex, 'weight', parseFloat(e.target.value) || 0)}
-                                  className="w-full bg-ground/60 border border-border-subtle rounded-lg px-1.5 py-2.5 text-center text-sm text-white focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 transition-colors min-h-[40px]"
-                                />
-                              ) : <div />}
-                              {/* A1 reps */}
-                              {set1 ? (
-                                <input
-                                  type="number" inputMode="numeric" placeholder={ex.reps.split('-')[0] || '0'}
-                                  value={set1.reps || ''}
-                                  onChange={(e) => updateSet(exIndex, setIndex, 'reps', Number(e.target.value))}
-                                  className="w-full bg-ground/60 border border-border-subtle rounded-lg px-1.5 py-2.5 text-center text-sm text-white focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 transition-colors min-h-[40px]"
-                                />
-                              ) : <div />}
-                              {/* A2 weight */}
-                              {set2 ? (
-                                <input
-                                  type="number" inputMode="decimal" step="any" placeholder="0"
-                                  value={set2.weight || ''}
-                                  onChange={(e) => updateSet(exIndex + 1, setIndex, 'weight', parseFloat(e.target.value) || 0)}
-                                  className="w-full bg-ground/60 border border-purple-500/20 rounded-lg px-1.5 py-2.5 text-center text-sm text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30 transition-colors min-h-[40px]"
-                                />
-                              ) : <div />}
-                              {/* A2 reps */}
-                              {set2 ? (
-                                <input
-                                  type="number" inputMode="numeric" placeholder={ex2.reps.split('-')[0] || '0'}
-                                  value={set2.reps || ''}
-                                  onChange={(e) => updateSet(exIndex + 1, setIndex, 'reps', Number(e.target.value))}
-                                  className="w-full bg-ground/60 border border-purple-500/20 rounded-lg px-1.5 py-2.5 text-center text-sm text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30 transition-colors min-h-[40px]"
-                                />
-                              ) : <div />}
+                              {/* Exercise A label */}
+                              <div className="grid grid-cols-[2rem_1fr_1fr] gap-2 px-1">
+                                <div />
+                                <p className="text-[9px] text-purple-400 font-medium -mt-0.5 mb-0.5 truncate col-span-2">A1: {trackedEx.exerciseName}</p>
+                              </div>
+                              {/* Exercise B row */}
+                              <div className="grid grid-cols-[2rem_1fr_1fr] gap-2 items-center py-1 px-1">
+                                <div />
+                                {set2 ? (
+                                  <>
+                                    <input
+                                      type="number" inputMode="decimal" step="any" placeholder="0"
+                                      value={set2.weight || ''}
+                                      onChange={(e) => updateSet(exIndex + 1, setIndex, 'weight', parseFloat(e.target.value) || 0)}
+                                      className="w-full bg-ground/60 border border-purple-500/20 rounded-lg px-2 py-2.5 text-center text-sm text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30 transition-colors min-h-[40px]"
+                                    />
+                                    <input
+                                      type="number" inputMode="numeric" placeholder={ex2.reps.split('-')[0] || '0'}
+                                      value={set2.reps || ''}
+                                      onChange={(e) => updateSet(exIndex + 1, setIndex, 'reps', Number(e.target.value))}
+                                      className="w-full bg-ground/60 border border-purple-500/20 rounded-lg px-2 py-2.5 text-center text-sm text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30 transition-colors min-h-[40px]"
+                                    />
+                                  </>
+                                ) : <><div /><div /></>}
+                              </div>
+                              {/* Exercise B label */}
+                              <div className="grid grid-cols-[2rem_1fr_1fr] gap-2 px-1">
+                                <div />
+                                <p className="text-[9px] text-purple-400/60 font-medium -mt-0.5 mb-1.5 truncate col-span-2">A2: {trackedEx2.exerciseName}</p>
+                              </div>
                             </div>
                           );
                         })}
 
                         <div className="flex gap-2 mt-2">
                           <button
-                            onClick={() => addSet(exIndex)}
-                            className="flex-1 py-2 border border-dashed border-border rounded-lg text-xs text-zinc-600 hover:text-zinc-400 hover:border-zinc-500 transition-colors flex items-center justify-center gap-1 cursor-pointer min-h-[40px]"
-                          ><Plus className="w-3 h-3" /> A1 Set</button>
-                          <button
-                            onClick={() => addSet(exIndex + 1)}
-                            className="flex-1 py-2 border border-dashed border-purple-500/20 rounded-lg text-xs text-zinc-600 hover:text-zinc-400 hover:border-purple-500/40 transition-colors flex items-center justify-center gap-1 cursor-pointer min-h-[40px]"
-                          ><Plus className="w-3 h-3" /> A2 Set</button>
+                            onClick={() => { addSet(exIndex); addSet(exIndex + 1); }}
+                            className="flex-1 py-2.5 border border-dashed border-border rounded-lg text-xs text-zinc-600 hover:text-zinc-400 hover:border-zinc-500 transition-colors flex items-center justify-center gap-1 cursor-pointer min-h-[44px]"
+                          ><Plus className="w-3 h-3" /> Add Set</button>
                         </div>
                       </div>
 
@@ -742,7 +741,7 @@ export default function ActiveWorkout({
                         <Check className="w-4 h-4" />
                       </motion.span>
                     ) : (
-                      <span className="font-mono">{exIndex + 1}</span>
+                      <span className="font-mono">{visualNum}</span>
                     )}
                   </div>
                   <div className="min-w-0">
@@ -968,10 +967,8 @@ export default function ActiveWorkout({
             </div>
             </div>
           );
-        })}
+        }); })()}
       </div>
-
-      {/* Workout Day Note (simplified) */}
       <div className="mt-6">
         <textarea
           placeholder="How did today's workout feel? Add notes here..."
