@@ -1,7 +1,32 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'motion/react';
-import { X, Check, PlayCircle, Info, ChevronDown, ChevronUp, Plus } from 'lucide-react';
+import { X, Check, PlayCircle, Info, ChevronDown, ChevronUp, Plus, Timer, ArrowLeft, MessageSquare } from 'lucide-react';
 import { WorkoutPlan, TrackedWorkout, TrackedExercise } from '../types';
+
+/** Parse rest strings like '60s', '90s', '2 min', '2-3 min', '60-90s' into seconds (lower bound). */
+function parseRestSeconds(rest: string): number {
+  const cleaned = rest.toLowerCase().trim();
+  // Match patterns like "60-90s", "60s", "2-3 min", "2 min"
+  const rangeMatch = cleaned.match(/^(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)\s*(s|sec|seconds?|m|min|minutes?)?$/);
+  if (rangeMatch) {
+    const val = parseFloat(rangeMatch[1]);
+    const unit = rangeMatch[3] || 's';
+    return unit.startsWith('m') ? Math.round(val * 60) : Math.round(val);
+  }
+  const singleMatch = cleaned.match(/^(\d+(?:\.\d+)?)\s*(s|sec|seconds?|m|min|minutes?)?$/);
+  if (singleMatch) {
+    const val = parseFloat(singleMatch[1]);
+    const unit = singleMatch[2] || 's';
+    return unit.startsWith('m') ? Math.round(val * 60) : Math.round(val);
+  }
+  return 60; // Fallback default
+}
+
+/** Strip orphaned superset labels from rest/description text */
+function cleanSupersetText(text: string, hasPartner: boolean): string {
+  if (hasPartner) return text;
+  return text.replace(/\b[Ss]uper\s*[Ss]et\b[:\s-]*/gi, '').trim() || text;
+}
 
 interface ActiveWorkoutProps {
   plan: WorkoutPlan;
@@ -10,7 +35,7 @@ interface ActiveWorkoutProps {
   existingWorkout?: TrackedWorkout;
   onComplete: (workout: TrackedWorkout) => void;
   onCancel: () => void;
-  onAutoSave?: (exercises: TrackedExercise[]) => void;
+  onAutoSave?: (exercises: TrackedExercise[], note?: string) => void;
 }
 
 export default function ActiveWorkout({
@@ -49,8 +74,31 @@ export default function ActiveWorkout({
     })) ?? [];
   });
 
+  // Day-level note
+  const [workoutNote, setWorkoutNote] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem('jw_active_session');
+      if (saved) {
+        const session = JSON.parse(saved);
+        if (session.week === week && session.day === day) {
+          return session.workoutNote ?? '';
+        }
+      }
+    } catch { /* ignore */ }
+    return existingWorkout?.note ?? '';
+  });
+
   const [expandedExercise, setExpandedExercise] = useState<number | null>(0);
   const exerciseRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  // Rest timer state
+  const [activeTimer, setActiveTimer] = useState<{
+    exIndex: number;
+    totalSeconds: number;
+    startedAt: number;
+  } | null>(null);
+  const [timerSecondsLeft, setTimerSecondsLeft] = useState<number>(0);
+  const [timerComplete, setTimerComplete] = useState(false);
 
   useEffect(() => {
     if (expandedExercise !== null && exerciseRefs.current[expandedExercise]) {
@@ -68,24 +116,71 @@ export default function ActiveWorkout({
   useEffect(() => {
     localStorage.setItem(
       'jw_active_session',
-      JSON.stringify({ week, day, exercises: trackedData, lastSaved: Date.now() })
+      JSON.stringify({ week, day, exercises: trackedData, workoutNote, lastSaved: Date.now() })
     );
-  }, [trackedData, week, day]);
+  }, [trackedData, workoutNote, week, day]);
 
-  // Auto-save to Supabase when app goes to background / phone locks
+  // Debounced auto-save to server (2s after last change)
   const trackedDataRef = useRef(trackedData);
   trackedDataRef.current = trackedData;
+  const workoutNoteRef = useRef(workoutNote);
+  workoutNoteRef.current = workoutNote;
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const debouncedServerSave = useCallback(() => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      onAutoSave?.(trackedDataRef.current, workoutNoteRef.current);
+    }, 2000);
+  }, [onAutoSave]);
+
+  // Trigger debounced save on every data change
+  useEffect(() => {
+    debouncedServerSave();
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, [trackedData, workoutNote, debouncedServerSave]);
+
+  // Also save to server when app goes to background
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
-        onAutoSave?.(trackedDataRef.current);
+        if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+        onAutoSave?.(trackedDataRef.current, workoutNoteRef.current);
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [onAutoSave]);
 
+  // Rest timer countdown using elapsed-time calculation (survives phone sleep)
+  useEffect(() => {
+    if (!activeTimer) return;
+    const tick = () => {
+      const elapsed = (Date.now() - activeTimer.startedAt) / 1000;
+      const remaining = Math.max(0, activeTimer.totalSeconds - elapsed);
+      setTimerSecondsLeft(Math.ceil(remaining));
+      if (remaining <= 0) {
+        setTimerComplete(true);
+        setActiveTimer(null);
+        // Auto-dismiss "complete" state after 3 seconds
+        setTimeout(() => setTimerComplete(false), 3000);
+      }
+    };
+    tick();
+    const interval = setInterval(tick, 250);
+    return () => clearInterval(interval);
+  }, [activeTimer]);
+
   if (!workoutDay) return null;
+
+  const startRestTimer = (exIndex: number, restString: string) => {
+    const seconds = parseRestSeconds(restString);
+    setTimerComplete(false);
+    setActiveTimer({ exIndex, totalSeconds: seconds, startedAt: Date.now() });
+    setTimerSecondsLeft(seconds);
+  };
 
   const selectAlternative = (exIndex: number, altName: string) => {
     const newData = [...trackedData];
@@ -101,7 +196,6 @@ export default function ActiveWorkout({
   ) => {
     const newData = [...trackedData];
     const currentSet = { ...newData[exIndex].sets[setIndex], [field]: value };
-    // Auto-complete: a set counts as done when reps are entered
     currentSet.completed = currentSet.reps > 0;
     newData[exIndex] = {
       ...newData[exIndex],
@@ -109,6 +203,12 @@ export default function ActiveWorkout({
         i === setIndex ? currentSet : s
       ),
     };
+    setTrackedData(newData);
+  };
+
+  const updateExerciseNote = (exIndex: number, note: string) => {
+    const newData = [...trackedData];
+    newData[exIndex] = { ...newData[exIndex], note };
     setTrackedData(newData);
   };
 
@@ -138,6 +238,7 @@ export default function ActiveWorkout({
       date: new Date().toISOString(),
       exercises: trackedData,
       completed: true,
+      note: workoutNote || undefined,
     });
   };
 
@@ -146,6 +247,27 @@ export default function ActiveWorkout({
     0
   );
   const totalSets = trackedData.reduce((acc, ex) => acc + ex.sets.length, 0);
+
+  const formatTime = (s: number) => {
+    const mins = Math.floor(s / 60);
+    const secs = s % 60;
+    return mins > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${secs}s`;
+  };
+
+  // Detect superset pairing: an exercise has a "partner" if the next exercise
+  // also mentions "superset" in its rest or description
+  const hasSupersetPartner = (exIndex: number): boolean => {
+    const exercises = workoutDay.exercises;
+    const current = exercises[exIndex];
+    const next = exercises[exIndex + 1];
+    const prev = exercises[exIndex - 1];
+    const supersetPattern = /super\s*set/i;
+    const currentMention = supersetPattern.test(current.rest) || supersetPattern.test(current.expertAdvice || '');
+    if (!currentMention) return false;
+    const nextMention = next && (supersetPattern.test(next.rest) || supersetPattern.test(next.expertAdvice || ''));
+    const prevMention = prev && (supersetPattern.test(prev.rest) || supersetPattern.test(prev.expertAdvice || ''));
+    return !!(nextMention || prevMention);
+  };
 
   return (
     <motion.div
@@ -169,11 +291,37 @@ export default function ActiveWorkout({
           <button
             onClick={onCancel}
             className="w-9 h-9 bg-[#111] border border-[#222] rounded-full flex items-center justify-center hover:bg-[#1a1a1a] transition-colors cursor-pointer"
+            title="Back to dashboard"
           >
-            <X className="w-4 h-4" />
+            <ArrowLeft className="w-4 h-4" />
           </button>
         </div>
       </div>
+
+      {/* Floating Rest Timer Banner */}
+      {(activeTimer || timerComplete) && (
+        <div className={`sticky top-[7.5rem] z-30 mb-3 rounded-xl p-3 flex items-center justify-between transition-all ${
+          timerComplete
+            ? 'bg-green-500/20 border border-green-500/30'
+            : 'bg-orange-500/15 border border-orange-500/25'
+        }`}>
+          <div className="flex items-center gap-2">
+            <Timer className={`w-4 h-4 ${timerComplete ? 'text-green-400' : 'text-orange-500'}`} />
+            <span className="text-sm font-bold">
+              {timerComplete ? (
+                <span className="text-green-400">REST COMPLETE — GO!</span>
+              ) : (
+                <span className="text-orange-300 font-mono text-lg">{formatTime(timerSecondsLeft)}</span>
+              )}
+            </span>
+          </div>
+          {!timerComplete && (
+            <span className="text-[10px] text-zinc-500">
+              {workoutDay.exercises[activeTimer!.exIndex]?.name}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Exercise List */}
       <div className="space-y-3">
@@ -181,6 +329,7 @@ export default function ActiveWorkout({
           const isExpanded = expandedExercise === exIndex;
           const trackedEx = trackedData[exIndex];
           const allDone = trackedEx.sets.every((s) => s.completed);
+          const isSupersetPartner = hasSupersetPartner(exIndex);
 
           const currentAlt = ex.alternatives.find(
             (a) => a.name === trackedEx.exerciseName
@@ -188,13 +337,17 @@ export default function ActiveWorkout({
           const displayAdvice = currentAlt?.expertAdvice || ex.expertAdvice || 'Focus on proper form and controlled movements.';
           const displayVideo = currentAlt?.videoSearchQuery || ex.videoSearchQuery || `${trackedEx.exerciseName} exercise form tutorial`;
 
-          // Unified swap list: original + all alternatives (always shows original)
+          // Clean superset mentions from rest text if not properly paired
+          const displayRest = cleanSupersetText(ex.rest, isSupersetPartner);
+
           const allSwapOptions = [
             { name: ex.name, isOriginal: true },
             ...ex.alternatives
               .filter(a => a.name !== ex.name)
               .map(a => ({ name: a.name, isOriginal: false })),
           ];
+
+          const isTimerRunning = activeTimer?.exIndex === exIndex;
 
           return (
             <div
@@ -239,7 +392,7 @@ export default function ActiveWorkout({
                       )}
                     </div>
                     <p className="text-[11px] text-zinc-500 font-mono">
-                      {ex.sets}×{ex.reps} · {ex.rest}
+                      {ex.sets}×{ex.reps} · {displayRest}
                     </p>
                   </div>
                 </div>
@@ -259,7 +412,7 @@ export default function ActiveWorkout({
                       <Info className="w-3 h-3" /> FORM TIPS
                     </p>
                     <p className="text-[13px] text-orange-100/70 leading-relaxed">
-                      {displayAdvice}
+                      {cleanSupersetText(displayAdvice, isSupersetPartner)}
                     </p>
                   </div>
 
@@ -379,11 +532,56 @@ export default function ActiveWorkout({
                       <Plus className="w-3 h-3" /> Add Set
                     </button>
                   </div>
+
+                  {/* Rest Timer Button */}
+                  <button
+                    onClick={() => startRestTimer(exIndex, ex.rest)}
+                    disabled={isTimerRunning}
+                    className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                      isTimerRunning
+                        ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+                        : 'bg-[#1a1a1a] text-zinc-300 hover:bg-[#222] border border-[#333] active:scale-[0.98]'
+                    }`}
+                  >
+                    <Timer className="w-4 h-4" />
+                    {isTimerRunning
+                      ? `Resting... ${formatTime(timerSecondsLeft)}`
+                      : `Start Rest (${displayRest})`
+                    }
+                  </button>
+
+                  {/* Exercise Note */}
+                  <div className="bg-[#0a0a0a] rounded-xl border border-[#1a1a1a] p-3">
+                    <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold mb-2 flex items-center gap-1">
+                      <MessageSquare className="w-3 h-3" /> EXERCISE NOTES
+                    </p>
+                    <textarea
+                      placeholder="Add a note about this exercise..."
+                      value={trackedEx.note ?? ''}
+                      onChange={(e) => updateExerciseNote(exIndex, e.target.value)}
+                      rows={2}
+                      className="w-full bg-black/40 border border-[#222] rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-orange-500/50 transition-colors resize-none"
+                    />
+                  </div>
                 </div>
               )}
             </div>
           );
         })}
+      </div>
+
+      {/* Workout Day Note */}
+      <div className="mt-6 bg-[#111] border border-[#222] rounded-2xl p-4">
+        <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold mb-2 flex items-center gap-1">
+          <MessageSquare className="w-3 h-3" /> WORKOUT NOTES
+        </p>
+        <textarea
+          placeholder="How did today's workout feel?"
+          value={workoutNote}
+          onChange={(e) => setWorkoutNote(e.target.value)}
+          rows={3}
+          className="w-full bg-black/40 border border-[#222] rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-orange-500/50 transition-colors resize-none"
+        />
       </div>
 
       {/* Fixed Bottom CTA */}

@@ -12,7 +12,6 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [signUpSuccess, setSignUpSuccess] = useState(false);
 
   const validate = (): string | null => {
     if (!email.trim()) return 'Email is required';
@@ -36,44 +35,15 @@ export default function Auth() {
     try {
       if (mode === 'login') {
         const { error: authErr } = await signIn(email, password);
-        if (authErr) setError(authErr.message);
+        if (authErr) setError(authErr);
       } else {
         const { error: authErr } = await signUp(email, password);
-        if (authErr) {
-          setError(authErr.message);
-        } else {
-          setSignUpSuccess(true);
-        }
+        if (authErr) setError(authErr);
       }
     } finally {
       setLoading(false);
     }
   };
-
-  if (signUpSuccess) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col items-center justify-center py-24 px-4 text-center"
-      >
-        <div className="w-14 h-14 rounded-2xl bg-green-500/10 flex items-center justify-center mb-6">
-          <Mail className="w-7 h-7 text-green-400" />
-        </div>
-        <h2 className="text-xl font-black mb-2 tracking-tight">Check Your Email</h2>
-        <p className="text-zinc-400 text-sm max-w-xs mb-8">
-          We sent a confirmation link to <span className="text-white font-medium">{email}</span>.
-          Click it to activate your account.
-        </p>
-        <button
-          onClick={() => { setSignUpSuccess(false); setMode('login'); }}
-          className="text-orange-500 text-sm font-semibold hover:text-orange-400 transition-colors"
-        >
-          Back to Log In
-        </button>
-      </motion.div>
-    );
-  }
 
   return (
     <motion.div

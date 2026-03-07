@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, ChevronRight, Trophy, ArrowLeft, Dumbbell, Calendar, Loader2, TrendingUp } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
 import {
   getDistinctExercises,
   getExerciseHistory,
@@ -15,7 +14,6 @@ import {
 import ProgressChart from './ProgressChart';
 
 export default function History() {
-  const { user } = useAuth();
   const [exercises, setExercises] = useState<ExerciseSummary[]>([]);
   const [filtered, setFiltered] = useState<ExerciseSummary[]>([]);
   const [search, setSearch] = useState('');
@@ -23,16 +21,15 @@ export default function History() {
   const [selectedExercise, setSelectedExercise] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user) return;
     setLoading(true);
-    getDistinctExercises(user.id)
+    getDistinctExercises()
       .then((data) => {
         setExercises(data);
         setFiltered(data);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [user]);
+  }, []);
 
   useEffect(() => {
     if (!search.trim()) {
@@ -139,19 +136,17 @@ function ExerciseDetail({
   exerciseName: string;
   onBack: () => void;
 }) {
-  const { user } = useAuth();
   const [sessions, setSessions] = useState<HistorySession[]>([]);
   const [pr, setPR] = useState<PersonalRecord | null>(null);
   const [chartData, setChartData] = useState<ProgressionPoint[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
     setLoading(true);
     Promise.all([
-      getExerciseHistory(user.id, exerciseName),
-      getExercisePR(user.id, exerciseName),
-      getProgressionData(user.id, exerciseName),
+      getExerciseHistory(exerciseName),
+      getExercisePR(exerciseName),
+      getProgressionData(exerciseName),
     ])
       .then(([hist, prData, prog]) => {
         setSessions(hist);
@@ -160,7 +155,7 @@ function ExerciseDetail({
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [user, exerciseName]);
+  }, [exerciseName]);
 
   if (loading) {
     return (

@@ -8,9 +8,7 @@
  * Cloudflare Pages dashboard (Settings → Environment variables).
  */
 
-interface Env {
-  OPENAI_API_KEY: string;
-}
+import type { Env } from './_shared/types';
 
 /* ------------------------------------------------------------------ */
 /*  JSON schema for structured output (OpenAI REST API format)         */
@@ -167,9 +165,10 @@ RULES:
 3. expertAdvice = 1 concise sentence: key form cue or common mistake. No fluff.
 4. videoSearchQuery = short YouTube search string for the exercise.
 5. focus = short title, 1-5 words max. Example: "Chest & Triceps".
-6. description = 1-2 sentences explaining what muscle areas/sections are targeted and why. For example for a chest day: "Focus on upper, mid, and lower pec development with heavy compounds for thickness and flyes for width." Be specific about anatomy.${secondaryGoal ? `
-7. Where appropriate, incorporate exercise selection, rep ranges, or rest periods that also serve the secondary goal of ${secondaryGoal}. For example, if the secondary goal is Fat Loss, include supersets or shorter rest periods; if Strength, include heavier compound movements.` : ''}
-${secondaryGoal ? '8' : '7'}. Return dayNumber as ${dayNumber}.`;
+6. description = 1-2 sentences explaining what muscle areas/sections are targeted and why. For example for a chest day: "Focus on upper, mid, and lower pec development with heavy compounds for thickness and flyes for width." Be specific about anatomy.
+7. Do NOT use the word "superset" in any field unless you are explicitly pairing two consecutive exercises to be performed back-to-back. If you use "superset", both the current exercise AND the next exercise must reference each other as superset partners in their rest field.${secondaryGoal ? `
+8. Where appropriate, incorporate exercise selection, rep ranges, or rest periods that also serve the secondary goal of ${secondaryGoal}. For example, if the secondary goal is Fat Loss, include supersets or shorter rest periods; if Strength, include heavier compound movements.` : ''}
+${secondaryGoal ? '9' : '8'}. Return dayNumber as ${dayNumber}.`;
 }
 
 /** Pick the canonical split and day focuses for a given frequency */

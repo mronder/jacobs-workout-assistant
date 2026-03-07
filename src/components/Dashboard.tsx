@@ -1,16 +1,62 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'motion/react';
-import { Play, CheckCircle, Quote, ChevronRight } from 'lucide-react';
+import { Play, CheckCircle, Quote, ChevronRight, MessageSquare } from 'lucide-react';
 import { WorkoutPlan, TrackedWorkout } from '../types';
+import { loadWeeklyNotes, saveWeeklyNote } from '../services/tracking';
 
 interface DashboardProps {
   plan: WorkoutPlan;
+  planId: string | null;
   trackedWorkouts: TrackedWorkout[];
   onStartWorkout: (week: number, day: number) => void;
 }
 
-export default function Dashboard({ plan, trackedWorkouts, onStartWorkout }: DashboardProps) {
+export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkout }: DashboardProps) {
   const [activeWeek, setActiveWeek] = useState(1);
+  const [weeklyNotes, setWeeklyNotes] = useState<Record<number, string>>({});
+  const [showWeekNote, setShowWeekNote] = useState(false);
+
+  // Check for in-progress session to show resume banner
+  const [resumeSession, setResumeSession] = useState<{ week: number; day: number } | null>(null);
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('jw_active_session');
+      if (saved) {
+        const session = JSON.parse(saved);
+        if (session.week && session.day && session.exercises?.length) {
+          // Check if any set has data entered
+          const hasData = session.exercises.some((ex: { sets: { weight: number; reps: number }[] }) =>
+            ex.sets.some((s: { weight: number; reps: number }) => s.weight > 0 || s.reps > 0)
+          );
+          if (hasData) {
+            setResumeSession({ week: session.week, day: session.day });
+          }
+        }
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  // Load weekly notes from server
+  useEffect(() => {
+    if (!planId) return;
+    loadWeeklyNotes(planId).then((notes) => {
+      const map: Record<number, string> = {};
+      for (const n of notes) map[n.weekNumber] = n.note;
+      setWeeklyNotes(map);
+    }).catch(() => { /* ignore */ });
+  }, [planId]);
+
+  // Debounced save for weekly notes
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleWeekNoteChange = useCallback((value: string) => {
+    setWeeklyNotes((prev) => ({ ...prev, [activeWeek]: value }));
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      if (planId) {
+        saveWeeklyNote(planId, activeWeek, value).catch(() => { /* ignore */ });
+      }
+    }, 2000);
+  }, [planId, activeWeek]);
 
   const totalWorkouts = plan.weeks.reduce((acc, week) => acc + week.days.length, 0);
   const completedCount = trackedWorkouts.filter(tw => tw.completed).length;
@@ -26,6 +72,28 @@ export default function Dashboard({ plan, trackedWorkouts, onStartWorkout }: Das
       transition={{ duration: 0.3 }}
       className="space-y-6"
     >
+      {/* Resume Workout Banner */}
+      {resumeSession && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-orange-500/15 border border-orange-500/30 rounded-2xl p-4 flex items-center justify-between"
+        >
+          <div>
+            <p className="text-sm font-bold text-orange-400">Workout in progress</p>
+            <p className="text-xs text-zinc-400 mt-0.5">
+              Week {resumeSession.week} · Day {resumeSession.day} — tap to continue
+            </p>
+          </div>
+          <button
+            onClick={() => onStartWorkout(resumeSession.week, resumeSession.day)}
+            className="bg-orange-500 text-black px-4 py-2 rounded-xl text-sm font-bold cursor-pointer active:scale-95 transition-all"
+          >
+            Resume
+          </button>
+        </motion.div>
+      )}
+
       {/* Hero Card */}
       <div className="relative bg-[#111] border border-[#222] rounded-2xl p-5 overflow-hidden">
         <div className="absolute -top-20 -right-20 w-60 h-60 bg-orange-500/8 rounded-full blur-3xl pointer-events-none" />
@@ -75,6 +143,33 @@ export default function Dashboard({ plan, trackedWorkouts, onStartWorkout }: Das
             </button>
           );
         })}
+      </div>
+
+      {/* Weekly Note */}
+      <div className="bg-[#111] border border-[#222] rounded-2xl overflow-hidden">
+        <button
+          onClick={() => setShowWeekNote(!showWeekNote)}
+          className="w-full px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-[#1a1a1a] transition-colors"
+        >
+          <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold flex items-center gap-1.5">
+            <MessageSquare className="w-3 h-3" /> WEEK {activeWeek} NOTES
+            {weeklyNotes[activeWeek] && (
+              <span className="w-1.5 h-1.5 rounded-full bg-orange-500 inline-block" />
+            )}
+          </span>
+          <ChevronRight className={`w-3.5 h-3.5 text-zinc-600 transition-transform ${showWeekNote ? 'rotate-90' : ''}`} />
+        </button>
+        {showWeekNote && (
+          <div className="px-4 pb-4">
+            <textarea
+              placeholder="Weekly reflection... How's the program feeling?"
+              value={weeklyNotes[activeWeek] ?? ''}
+              onChange={(e) => handleWeekNoteChange(e.target.value)}
+              rows={3}
+              className="w-full bg-black/40 border border-[#222] rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-orange-500/50 transition-colors resize-none"
+            />
+          </div>
+        )}
       </div>
 
       {/* Day Cards */}

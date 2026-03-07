@@ -6,18 +6,21 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
-import type { User, Session, AuthError } from '@supabase/supabase-js';
-import { supabase } from '../services/supabaseClient';
+
+/** Lightweight user shape — no Supabase dependency */
+export interface AppUser {
+  id: string;
+  email: string;
+}
 
 interface AuthState {
-  user: User | null;
-  session: Session | null;
+  user: AppUser | null;
   loading: boolean;
 }
 
 interface AuthContextValue extends AuthState {
-  signUp: (email: string, password: string) => Promise<{ error: AuthError | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
+  signUp: (email: string, password: string) => Promise<{ error: string | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -26,38 +29,58 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
     user: null,
-    session: null,
     loading: true,
   });
 
+  // Check session on mount via cookie
   useEffect(() => {
-    // Get the initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setState({ user: session?.user ?? null, session, loading: false });
-    });
-
-    // Listen for auth changes (login, logout, token refresh)
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setState({ user: session?.user ?? null, session, loading: false });
-    });
-
-    return () => subscription.unsubscribe();
+    fetch('/api/auth/me', { credentials: 'same-origin' })
+      .then((r) => r.json())
+      .then((data: { user: AppUser | null }) => {
+        setState({ user: data.user, loading: false });
+      })
+      .catch(() => {
+        setState({ user: null, loading: false });
+      });
   }, []);
 
   const signUp = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password });
-    return { error };
+    try {
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ email, password }),
+      });
+      const data = (await res.json()) as { error?: string; user?: AppUser };
+      if (!res.ok) return { error: data.error ?? 'Signup failed' };
+      setState({ user: data.user ?? null, loading: false });
+      return { error: null };
+    } catch {
+      return { error: 'Network error' };
+    }
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error };
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ email, password }),
+      });
+      const data = (await res.json()) as { error?: string; user?: AppUser };
+      if (!res.ok) return { error: data.error ?? 'Login failed' };
+      setState({ user: data.user ?? null, loading: false });
+      return { error: null };
+    } catch {
+      return { error: 'Network error' };
+    }
   }, []);
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+    setState({ user: null, loading: false });
   }, []);
 
   return (

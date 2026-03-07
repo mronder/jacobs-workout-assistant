@@ -44,6 +44,7 @@ export interface TrackedExercise {
   exerciseName: string;
   weightUnit?: 'kg' | 'lbs';
   sets: TrackedSet[];
+  note?: string;
 }
 
 export interface TrackedWorkout {
@@ -52,4 +53,11 @@ export interface TrackedWorkout {
   date: string;
   exercises: TrackedExercise[];
   completed: boolean;
+  note?: string;
+}
+
+export interface WeeklyNote {
+  planId: string;
+  weekNumber: number;
+  note: string;
 }

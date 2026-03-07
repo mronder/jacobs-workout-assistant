@@ -6,7 +6,6 @@ import { generateWorkoutPlan } from './services/openai';
 import { useAuth } from './contexts/AuthContext';
 import { savePlan, loadActivePlan, deactivatePlan } from './services/plans';
 import { saveTrackedWorkout, loadTrackedWorkouts } from './services/tracking';
-import { checkLocalStorageData, migrateLocalStorageToSupabase, clearLocalStorageData } from './services/migration';
 
 import Auth from './components/Auth';
 import Setup from './components/Setup';
@@ -14,7 +13,6 @@ import Dashboard from './components/Dashboard';
 import ActiveWorkout from './components/ActiveWorkout';
 import BottomNav from './components/BottomNav';
 import History from './components/History';
-import MigrationPrompt from './components/MigrationPrompt';
 
 const STORAGE_KEYS = {
   plan: 'jw_plan',
@@ -41,20 +39,18 @@ export default function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentTab, setCurrentTab] = useState<'workouts' | 'history'>('workouts');
   const [dataLoading, setDataLoading] = useState(false);
-  const [showMigration, setShowMigration] = useState(false);
 
-  /* ---- Load data from Supabase when user is authenticated ---- */
-  const loadUserData = useCallback(async (userId: string) => {
+  /* ---- Load data from server when user is authenticated ---- */
+  const loadUserData = useCallback(async () => {
     setDataLoading(true);
     try {
-      const result = await loadActivePlan(userId);
+      const result = await loadActivePlan();
       if (result) {
         setPlan(result.plan);
         setPlanId(result.planId);
-        // Cache in localStorage
         localStorage.setItem(STORAGE_KEYS.plan, JSON.stringify(result.plan));
 
-        const tracked = await loadTrackedWorkouts(userId, result.planId);
+        const tracked = await loadTrackedWorkouts(result.planId);
         setTrackedWorkouts(tracked);
         localStorage.setItem(STORAGE_KEYS.tracked, JSON.stringify(tracked));
       } else {
@@ -64,7 +60,6 @@ export default function App() {
       }
     } catch (err) {
       console.error('Failed to load user data:', err);
-      // Fall back to localStorage cache
       const cachedPlan = localStorage.getItem(STORAGE_KEYS.plan);
       const cachedTracked = localStorage.getItem(STORAGE_KEYS.tracked);
       if (cachedPlan) setPlan(JSON.parse(cachedPlan));
@@ -75,17 +70,8 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!user) {
-      // Check if there's localStorage data when not logged in (will show migration prompt after login)
-      return;
-    }
-
-    // Check for localStorage migration
-    if (checkLocalStorageData()) {
-      setShowMigration(true);
-    }
-
-    loadUserData(user.id);
+    if (!user) return;
+    loadUserData();
   }, [user, loadUserData]);
 
   /* ---- Handlers ---- */
@@ -99,13 +85,13 @@ export default function App() {
       localStorage.setItem(STORAGE_KEYS.plan, JSON.stringify(newPlan));
       localStorage.setItem(STORAGE_KEYS.tracked, JSON.stringify([]));
 
-      // Save to Supabase
+      // Save to server
       if (user) {
         try {
-          const id = await savePlan(user.id, newPlan, days, goal, level, secondaryGoal);
+          const id = await savePlan(newPlan, days, goal, level, secondaryGoal);
           setPlanId(id);
         } catch (err) {
-          console.error('Failed to save plan to Supabase:', err);
+          console.error('Failed to save plan:', err);
         }
       }
     } catch (error: unknown) {
@@ -128,25 +114,26 @@ export default function App() {
     localStorage.removeItem(STORAGE_KEYS.activeSession);
     setActiveWorkout(null);
 
-    // Save to Supabase
+    // Save to server
     if (user && planId) {
       try {
-        await saveTrackedWorkout(user.id, planId, workout);
+        await saveTrackedWorkout(planId, workout);
       } catch (err) {
-        console.error('Failed to save tracked workout to Supabase:', err);
+        console.error('Failed to save tracked workout:', err);
       }
     }
   };
 
-  const handleAutoSave = useCallback(async (exercises: TrackedExercise[]) => {
+  const handleAutoSave = useCallback(async (exercises: TrackedExercise[], note?: string) => {
     if (!user || !planId || !activeWorkout) return;
     try {
-      await saveTrackedWorkout(user.id, planId, {
+      await saveTrackedWorkout(planId, {
         weekNumber: activeWorkout.week,
         dayNumber: activeWorkout.day,
         date: new Date().toISOString(),
         exercises,
         completed: false,
+        note,
       });
     } catch (err) {
       console.error('Auto-save failed:', err);
@@ -156,7 +143,7 @@ export default function App() {
   const resetPlan = async () => {
     if (!confirm('Start a new plan? This will clear your current progress.')) return;
 
-    // Deactivate in Supabase (don't delete — we want history)
+    // Deactivate on server (don't delete — we want history)
     if (planId) {
       try {
         await deactivatePlan(planId);
@@ -170,18 +157,6 @@ export default function App() {
     setTrackedWorkouts([]);
     localStorage.removeItem(STORAGE_KEYS.plan);
     localStorage.removeItem(STORAGE_KEYS.tracked);
-  };
-
-  const handleMigrationImport = async () => {
-    if (!user) return;
-    await migrateLocalStorageToSupabase(user.id);
-    setShowMigration(false);
-    await loadUserData(user.id);
-  };
-
-  const handleMigrationSkip = () => {
-    clearLocalStorageData();
-    setShowMigration(false);
   };
 
   /* ---- Auth loading state ---- */
@@ -207,13 +182,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-zinc-100 font-sans selection:bg-orange-500/30">
-      {/* Migration prompt */}
-      <AnimatePresence>
-        {showMigration && (
-          <MigrationPrompt onImport={handleMigrationImport} onSkip={handleMigrationSkip} />
-        )}
-      </AnimatePresence>
-
       {/* Header */}
       <header className="border-b border-[#1a1a1a] bg-[#0a0a0a]/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
@@ -276,7 +244,8 @@ export default function App() {
                 )}
                 onComplete={handleCompleteWorkout}
                 onCancel={() => {
-                  localStorage.removeItem(STORAGE_KEYS.activeSession);
+                  // Don't delete session data — just go back to dashboard
+                  // Data is already auto-saved to localStorage and server
                   setActiveWorkout(null);
                 }}
                 onAutoSave={handleAutoSave}
@@ -285,6 +254,7 @@ export default function App() {
               <Dashboard
                 key="dashboard"
                 plan={plan}
+                planId={planId}
                 trackedWorkouts={trackedWorkouts}
                 onStartWorkout={(w, d) => setActiveWorkout({ week: w, day: d })}
               />
