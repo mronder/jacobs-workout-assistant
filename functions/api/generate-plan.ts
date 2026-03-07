@@ -160,7 +160,7 @@ function buildDayPrompt(
 This day's focus: ${dayFocus}
 
 RULES:
-1. MINIMUM 6 exercises for this day.
+1. Each day MUST have a MINIMUM of 5 exercises and a MAXIMUM of 8. A superset pair counts as 2 exercises. Vary the exercise count across days — NOT every day should have the same number. Tailor the count to the muscle group, day focus, and training goals. For example, a Legs day might have 7-8 exercises while an Arms day might have 5-6.
 2. 2 alternatives per exercise, each with a YouTube search query and 1-sentence expert advice.
 3. expertAdvice = 1 concise sentence: key form cue or common mistake. No fluff.
 4. videoSearchQuery = short YouTube search string for the exercise.
