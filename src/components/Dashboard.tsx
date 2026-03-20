@@ -63,6 +63,11 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
   const progress = Math.round((completedCount / totalWorkouts) * 100);
 
   const currentWeek = plan.weeks.find((w) => w.weekNumber === activeWeek);
+  const currentWeekCompleted = currentWeek?.days.filter((day) =>
+    trackedWorkouts.some((tw) => tw.weekNumber === activeWeek && tw.dayNumber === day.dayNumber && tw.completed)
+  ).length ?? 0;
+  const currentWeekTotal = currentWeek?.days.length ?? 0;
+  const currentWeekRemaining = Math.max(0, currentWeekTotal - currentWeekCompleted);
 
   return (
     <motion.div
@@ -72,16 +77,16 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
       transition={{ duration: 0.3 }}
       className="space-y-6"
     >
-      {/* Resume Workout Banner */}
       {resumeSession && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-orange-500/15 to-transparent border border-orange-500/30 rounded-2xl p-4 flex items-center justify-between"
+          className="bg-gradient-to-r from-orange-500/18 via-orange-500/10 to-transparent border border-orange-400/25 rounded-[24px] p-4 flex items-center justify-between gap-3 shadow-card"
         >
           <div>
-            <p className="text-sm font-bold text-orange-400">Workout in progress</p>
-            <p className="text-xs text-zinc-400 mt-0.5">
+            <p className="text-[10px] uppercase tracking-[0.26em] text-orange-300/80 mb-1">Live Session</p>
+            <p className="text-sm font-bold text-orange-100">Workout in progress</p>
+            <p className="text-xs text-zinc-400 mt-1">
               Week {resumeSession.week} · Day {resumeSession.day} — tap to continue
             </p>
           </div>
@@ -89,7 +94,7 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
             onClick={() => onStartWorkout(resumeSession.week, resumeSession.day)}
             animate={{ scale: [1, 1.05, 1] }}
             transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-            className="bg-orange-500 text-black px-4 py-2 rounded-xl text-sm font-bold cursor-pointer active:scale-95 transition-all min-h-[44px] flex items-center gap-1.5"
+            className="bg-gradient-to-r from-orange-300 to-orange-500 text-black px-4 py-2.5 rounded-2xl text-sm font-bold cursor-pointer active:scale-95 transition-all min-h-[44px] flex items-center gap-1.5 shadow-lg shadow-orange-500/20"
           >
             <Play className="w-3.5 h-3.5 fill-current" />
             Resume
@@ -97,21 +102,42 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
         </motion.div>
       )}
 
-      {/* Hero Card */}
-      <div className="relative bg-gradient-to-br from-surface-1 to-surface-2 rounded-2xl p-6 overflow-hidden shadow-card border border-border-subtle">
-        <div className="absolute -top-20 -right-20 w-60 h-60 bg-orange-500/8 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative">
-          <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight mb-1">{plan.planName}</h2>
-          <p className="text-zinc-400 text-xs sm:text-sm mb-4 leading-relaxed">{plan.splitDescription}</p>
+      <div className="relative overflow-hidden rounded-[30px] border border-white/8 bg-[linear-gradient(145deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))] p-6 shadow-card">
+        <div className="absolute -top-20 right-[-40px] w-60 h-60 bg-orange-500/12 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative space-y-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.3em] text-orange-300/80 mb-2">Current Program</p>
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2">{plan.planName}</h2>
+              <p className="text-zinc-300 text-sm leading-relaxed max-w-md">{plan.splitDescription}</p>
+            </div>
+            <div className="shrink-0 rounded-2xl border border-white/8 bg-black/20 px-3 py-2 text-right">
+              <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-500 mb-1">Week</p>
+              <p className="font-mono text-lg font-bold text-orange-200">{activeWeek}/4</p>
+            </div>
+          </div>
 
-          {/* Quote */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-2xl border border-white/8 bg-black/20 px-4 py-3">
+              <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-500 mb-1">Completed</p>
+              <p className="text-lg font-bold text-orange-100">{completedCount}</p>
+            </div>
+            <div className="rounded-2xl border border-white/8 bg-black/20 px-4 py-3">
+              <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-500 mb-1">This Week</p>
+              <p className="text-lg font-bold text-orange-100">{currentWeekCompleted}/{currentWeekTotal}</p>
+            </div>
+            <div className="rounded-2xl border border-white/8 bg-black/20 px-4 py-3">
+              <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-500 mb-1">Remaining</p>
+              <p className="text-lg font-bold text-orange-100">{currentWeekRemaining}</p>
+            </div>
+          </div>
+
           <div className="border-l-2 border-orange-500/30 pl-3">
-            <p className="text-xs text-zinc-500 italic leading-relaxed">"{plan.motivationalQuote}" — {plan.quoteAuthor}</p>
+            <p className="text-xs text-zinc-400 italic leading-relaxed">"{plan.motivationalQuote}" — {plan.quoteAuthor}</p>
           </div>
         </div>
       </div>
 
-      {/* Stats Row */}
       <div className="grid grid-cols-2 gap-3.5">
         <div className="col-span-2 bg-surface-1 rounded-2xl p-5 shadow-card flex items-center gap-5">
           <ProgressRing percent={progress} />
@@ -124,7 +150,6 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
         <StatCard label="Remaining" value={`${totalWorkouts - completedCount}`} color="neutral" />
       </div>
 
-      {/* Week Tabs */}
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
         {[1, 2, 3, 4].map((w) => {
           const weekData = plan.weeks.find((wk) => wk.weekNumber === w);
@@ -138,10 +163,10 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
             <button
               key={w}
               onClick={() => setActiveWeek(w)}
-              className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 min-w-[80px] min-h-[44px] justify-center ${
+              className={`px-5 py-3 rounded-full text-sm font-semibold transition-all whitespace-nowrap cursor-pointer flex items-center gap-2 min-w-[96px] min-h-[46px] justify-center border ${
                 activeWeek === w
-                  ? 'bg-orange-500 text-black'
-                  : 'bg-surface-2 text-zinc-500 hover:text-zinc-300'
+                  ? 'bg-orange-500 text-black border-orange-400 shadow-lg shadow-orange-500/15'
+                  : 'bg-surface-2/90 border-white/8 text-zinc-400 hover:text-zinc-200 hover:border-orange-300/18'
               }`}
             >
               Week {w}
@@ -157,11 +182,10 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
         })}
       </div>
 
-      {/* Weekly Note */}
-      <div className="bg-surface-1 rounded-2xl overflow-hidden shadow-card">
+      <div className="bg-surface-1 rounded-[24px] overflow-hidden shadow-card border border-white/8">
         <button
           onClick={() => setShowWeekNote(!showWeekNote)}
-          className="w-full px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-surface-3 transition-colors"
+          className="w-full px-4 py-4 flex items-center justify-between cursor-pointer hover:bg-surface-3 transition-colors"
         >
           <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-medium flex items-center gap-1.5">
             <MessageSquare className="w-3 h-3" /> WEEK {activeWeek} NOTES
@@ -184,7 +208,6 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
         )}
       </div>
 
-      {/* Day Cards */}
       <div className="space-y-3.5">
         {currentWeek?.days.map((day, idx) => {
           const completed = trackedWorkouts.some(
@@ -198,36 +221,38 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.05 }}
-              className={`bg-surface-2 rounded-2xl p-5 sm:p-6 transition-all shadow-card ${
-                completed ? 'ring-1 ring-orange-500/30 opacity-70' : ''
+              className={`rounded-[28px] p-5 sm:p-6 transition-all shadow-card border ${
+                completed
+                  ? 'bg-surface-2/80 border-orange-500/20 opacity-75'
+                  : 'bg-surface-2/95 border-white/8 hover:border-orange-300/16'
               }`}
             >
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start justify-between gap-3 mb-4">
                 <div className="flex items-start gap-3 min-w-0">
                   <div
-                    className={`w-11 h-11 rounded-xl flex items-center justify-center text-lg shrink-0 mt-0.5 ${
-                      completed ? 'bg-orange-500/15' : 'bg-surface-3'
+                    className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg shrink-0 mt-0.5 border ${
+                      completed ? 'bg-orange-500/12 border-orange-500/15' : 'bg-surface-3 border-white/8'
                     }`}
                   >
                     {completed ? <CheckCircle className="w-5 h-5 text-orange-500" /> : focusEmoji}
                   </div>
                   <div className="min-w-0">
+                    <p className="text-[10px] uppercase tracking-[0.24em] text-zinc-500 mb-1">Day {day.dayNumber}</p>
                     <h3 className={`font-semibold text-sm leading-snug ${completed ? 'line-through text-zinc-500' : ''}`}>{day.focus}</h3>
                     {day.description && (
-                      <p className="text-[11px] text-zinc-400 leading-relaxed mt-0.5">
+                      <p className="text-[12px] text-zinc-400 leading-relaxed mt-1.5 max-w-md">
                         {day.description}
                       </p>
                     )}
-                    <p className="text-[11px] text-zinc-500 mt-0.5">{day.exercises.length} exercises</p>
                   </div>
                 </div>
 
                 <button
                   onClick={() => onStartWorkout(activeWeek, day.dayNumber)}
-                  className={`shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer active:scale-95 min-h-[44px] ${
+                  className={`shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-2xl text-sm font-bold transition-all cursor-pointer active:scale-95 min-h-[44px] ${
                     completed
-                      ? 'bg-surface-3 text-zinc-300 hover:bg-elevated'
-                      : 'bg-orange-500 text-black hover:bg-orange-400'
+                      ? 'bg-surface-3 text-zinc-200 hover:bg-elevated border border-white/8'
+                      : 'bg-gradient-to-r from-orange-300 to-orange-500 text-black hover:from-orange-300 hover:to-orange-400 shadow-lg shadow-orange-500/15'
                   }`}
                 >
                   {completed ? 'Review' : 'Start'}
@@ -235,23 +260,31 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
                 </button>
               </div>
 
-              {/* Exercise Preview */}
-              <div className="mt-3 flex gap-2 overflow-x-auto scrollbar-hide">
+              <div className="flex items-center gap-2 flex-wrap mb-3">
+                <span className="rounded-full border border-white/8 bg-black/15 px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-zinc-400">{day.exercises.length} exercises</span>
+                {completed ? (
+                  <span className="rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-orange-200">Completed</span>
+                ) : (
+                  <span className="rounded-full border border-white/8 bg-black/15 px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-zinc-400">Ready to train</span>
+                )}
+              </div>
+
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide">
                 {day.exercises.slice(0, 4).map((ex, i) => (
                   <div
                     key={i}
-                    className="bg-ground/60 rounded-lg px-3 py-2 shrink-0"
+                    className="bg-ground/55 border border-white/8 rounded-2xl px-3 py-2.5 shrink-0"
                   >
-                    <p className="text-[11px] font-semibold text-zinc-400 truncate max-w-[120px]">
+                    <p className="text-[11px] font-semibold text-zinc-300 truncate max-w-[132px]">
                       {ex.name}
                     </p>
-                    <p className="text-[10px] text-zinc-600 font-mono">
+                    <p className="text-[10px] text-zinc-500 font-mono mt-1">
                       {ex.sets}×{ex.reps}
                     </p>
                   </div>
                 ))}
                 {day.exercises.length > 4 && (
-                  <div className="bg-ground/60 rounded-lg px-3 py-2 shrink-0 flex items-center">
+                  <div className="bg-ground/55 border border-white/8 rounded-2xl px-3 py-2 shrink-0 flex items-center">
                     <p className="text-[11px] text-zinc-600 font-mono">+{day.exercises.length - 4}</p>
                   </div>
                 )}
@@ -319,7 +352,7 @@ function ProgressRing({ percent }: { percent: number }) {
 function StatCard({ label, value, color }: { label: string; value: string; color: 'green' | 'neutral' }) {
   const accent = color === 'green' ? 'text-green-400' : 'text-zinc-300';
   return (
-    <div className="bg-surface-1 rounded-xl p-4 text-center shadow-card">
+    <div className="bg-surface-1 rounded-[22px] p-4 text-center shadow-card border border-white/8">
       <div className={`text-2xl font-extrabold font-mono ${accent}`}>{value}</div>
       <div className="text-[10px] text-zinc-500 uppercase tracking-widest mt-1 font-medium">{label}</div>
     </div>

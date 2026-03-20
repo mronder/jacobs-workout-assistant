@@ -1,1 +1,1 @@
-commit this new version to GH and then go back to sleep and read prompt.txt
+commit to gh then go back to sleep and read prompt.txt

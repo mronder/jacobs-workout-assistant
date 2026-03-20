@@ -197,25 +197,27 @@ export default function App() {
   const showBottomNav = !activeWorkout && !isGenerating;
 
   return (
-    <div className="min-h-screen bg-ground text-zinc-100 font-sans selection:bg-orange-500/30">
+    <div className="min-h-screen bg-ground text-zinc-100 font-sans selection:bg-orange-500/30 relative overflow-x-hidden">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(circle_at_top,rgba(255,122,26,0.18),transparent_58%)]" />
       {/* Header */}
-      <header className="border-b border-border-subtle bg-ground/80 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-lg mx-auto px-4 h-12 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-orange-500 flex items-center justify-center">
-              <Dumbbell className="w-3.5 h-3.5 text-black" />
+      <header className="border-b border-border-subtle bg-ground/65 backdrop-blur-xl sticky top-0 z-50">
+        <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-orange-400 to-orange-600 shadow-lg shadow-orange-500/20 flex items-center justify-center shrink-0">
+              <Dumbbell className="w-4 h-4 text-black" />
             </div>
-            <div>
-              <h1 className="font-extrabold text-sm leading-none tracking-tight">
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-[0.32em] text-orange-300/70 mb-0.5">Performance System</p>
+              <h1 className="font-bold text-sm leading-none tracking-tight">
                 JACOB<span className="text-orange-500">'S</span>
               </h1>
             </div>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2 shrink-0">
             {plan && !activeWorkout && currentTab === 'workouts' && (
               <button
                 onClick={resetPlan}
-                className="text-zinc-500 hover:text-white transition-colors cursor-pointer p-2 rounded-lg hover:bg-surface-1 min-h-[36px] min-w-[36px] flex items-center justify-center"
+                className="text-zinc-400 hover:text-white transition-colors cursor-pointer p-2 rounded-xl border border-border-subtle bg-surface-1/70 hover:bg-surface-1 min-h-[40px] min-w-[40px] flex items-center justify-center"
                 title="New Plan"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
@@ -223,7 +225,7 @@ export default function App() {
             )}
             <button
               onClick={signOut}
-              className="text-zinc-500 hover:text-white transition-colors cursor-pointer p-2 rounded-lg hover:bg-surface-1 min-h-[36px] min-w-[36px] flex items-center justify-center"
+              className="text-zinc-400 hover:text-white transition-colors cursor-pointer p-2 rounded-xl border border-border-subtle bg-surface-1/70 hover:bg-surface-1 min-h-[40px] min-w-[40px] flex items-center justify-center"
               title={user.email ?? 'Log out'}
             >
               <LogOut className="w-3.5 h-3.5" />
@@ -233,7 +235,7 @@ export default function App() {
       </header>
 
       {/* Main */}
-      <main className={`max-w-lg mx-auto px-4 py-6 ${showBottomNav ? 'pb-24' : ''}`}>
+      <main className={`relative max-w-lg mx-auto px-4 py-6 ${showBottomNav ? 'pb-28' : ''}`}>
         {dataLoading ? (
           <div className="space-y-4 py-6">
             {/* Shimmer skeleton placeholders */}

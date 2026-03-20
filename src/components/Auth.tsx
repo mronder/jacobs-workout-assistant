@@ -50,148 +50,159 @@ export default function Auth() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="flex flex-col items-center justify-center min-h-screen px-4 relative overflow-hidden"
+      className="flex flex-col items-center justify-center min-h-screen px-4 py-8 relative overflow-hidden"
     >
-      {/* Background gradient */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-orange-500/8 rounded-full blur-[100px]" />
-        <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-ground to-transparent" />
+        <div className="absolute -top-12 left-1/2 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-orange-500/16 blur-[120px]" />
+        <div className="absolute right-[-80px] top-24 h-64 w-64 rounded-full bg-amber-200/8 blur-[120px]" />
+        <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-ground via-ground/85 to-transparent" />
       </div>
 
-      <div className="relative z-10 w-full max-w-sm">
-        {/* Logo */}
-        <div className="flex flex-col items-center mb-10">
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.1, type: 'spring', stiffness: 200 }}
-            className="relative mb-5"
-          >
-            <div className="w-16 h-16 rounded-2xl bg-orange-500 flex items-center justify-center">
-              <Dumbbell className="w-8 h-8 text-black" />
+      <div className="relative z-10 w-full max-w-md">
+        <div className="mb-6 rounded-[28px] border border-white/8 bg-white/4 p-4 backdrop-blur-sm shadow-card">
+          <div className="flex items-center justify-between gap-3 mb-5">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="relative shrink-0">
+                <div className="w-14 h-14 rounded-[20px] bg-gradient-to-br from-orange-300 via-orange-500 to-orange-700 flex items-center justify-center shadow-lg shadow-orange-500/25">
+                  <Dumbbell className="w-7 h-7 text-black" />
+                </div>
+                <motion.div
+                  className="absolute -inset-2 rounded-[24px] border border-orange-300/30"
+                  animate={{ opacity: [0.25, 0.6, 0.25], scale: [1, 1.06, 1] }}
+                  transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+                />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-[0.32em] text-orange-200/70 mb-1">Adaptive Training</p>
+                <h1 className="font-bold text-2xl leading-none tracking-tight">
+                  JACOB<span className="text-orange-400">'S</span>
+                </h1>
+                <p className="text-sm text-zinc-400 mt-2 leading-relaxed">
+                  A sharper gym companion for AI-built programs, workout execution, and weekly progression.
+                </p>
+              </div>
             </div>
-            <motion.div
-              className="absolute -inset-2 rounded-2xl border border-orange-500/30"
-              animate={{ opacity: [0.3, 0.6, 0.3], scale: [1, 1.05, 1] }}
-              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-            />
-          </motion.div>
-          <h1 className="font-extrabold text-xl leading-none tracking-tight mb-1">
-            JACOB<span className="text-orange-500">'S</span>
-          </h1>
-          <p className="text-[9px] text-zinc-600 uppercase tracking-[0.2em] font-semibold leading-none">
-            Workout Planner
-          </p>
-          <p className="text-zinc-500 text-xs mt-4 text-center max-w-[250px]">
-            AI-powered training plans that adapt to you
-          </p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-2xl border border-white/8 bg-black/20 px-3 py-3">
+              <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-500 mb-1">Plans</p>
+              <p className="text-sm font-bold text-orange-200">Adaptive</p>
+            </div>
+            <div className="rounded-2xl border border-white/8 bg-black/20 px-3 py-3">
+              <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-500 mb-1">Tracking</p>
+              <p className="text-sm font-bold text-orange-200">Gym-first</p>
+            </div>
+            <div className="rounded-2xl border border-white/8 bg-black/20 px-3 py-3">
+              <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-500 mb-1">Flow</p>
+              <p className="text-sm font-bold text-orange-200">Fast</p>
+            </div>
+          </div>
         </div>
 
-        {/* Form Card */}
-        <div>
-          <h2 className="text-xl font-extrabold mb-1 tracking-tight text-center">
-            {mode === 'login' ? 'Welcome Back' : 'Create Account'}
-          </h2>
-          <p className="text-zinc-500 text-sm text-center mb-6">
-            {mode === 'login'
-              ? 'Log in to access your workouts'
-              : 'Sign up to save your workout data'}
-          </p>
-
-        <form onSubmit={handleSubmit} className="space-y-3">
-          {/* Email */}
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-            <input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-surface-1 border border-border-subtle rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 transition-colors"
-              autoComplete="email"
-            />
+        <div className="rounded-[28px] border border-white/8 bg-surface-1/88 p-6 shadow-card backdrop-blur-xl">
+          <div className="mb-6">
+            <div className="inline-flex items-center gap-2 rounded-full border border-orange-400/20 bg-orange-500/10 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.26em] text-orange-200">
+              {mode === 'login' ? 'Resume Training' : 'Start Fresh'}
+            </div>
+            <h2 className="text-3xl font-bold tracking-tight mt-4 mb-2">
+              {mode === 'login' ? 'Welcome back to the grind.' : 'Build your training HQ.'}
+            </h2>
+            <p className="text-zinc-400 text-sm leading-relaxed">
+              {mode === 'login'
+                ? 'Get back into your plan, continue your active workout, and keep your weekly momentum intact.'
+                : 'Create an account to save plans, track sessions, and keep your workout history synced.'}
+            </p>
           </div>
 
-          {/* Password */}
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-            <input
-              type={showPassword ? 'text' : 'password'}
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-surface-1 border border-border-subtle rounded-xl pl-10 pr-10 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 transition-colors"
-              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
-            >
-              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
-          </div>
+          <form onSubmit={handleSubmit} className="space-y-3.5">
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+              <input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded-2xl border border-border-subtle bg-ground/60 pl-11 pr-4 py-3.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 transition-colors"
+                autoComplete="email"
+              />
+            </div>
 
-          {/* Confirm Password (sign-up only) */}
-          {mode === 'signup' && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="relative"
-            >
+            <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
               <input
                 type={showPassword ? 'text' : 'password'}
-                placeholder="Confirm Password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full bg-surface-1 border border-border-subtle rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 transition-colors"
-                autoComplete="new-password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-2xl border border-border-subtle bg-ground/60 pl-11 pr-11 py-3.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 transition-colors"
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
               />
-            </motion.div>
-          )}
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
 
-          {/* Error */}
-          {error && (
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-red-400 text-xs text-center px-2"
-            >
-              {error}
-            </motion.p>
-          )}
-
-          {/* Submit */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-semibold text-sm py-3 rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer"
-          >
-            {loading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : mode === 'login' ? (
-              'Log In'
-            ) : (
-              'Create Account'
+            {mode === 'signup' && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="relative"
+              >
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Confirm Password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full rounded-2xl border border-border-subtle bg-ground/60 pl-11 pr-4 py-3.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 transition-colors"
+                  autoComplete="new-password"
+                />
+              </motion.div>
             )}
-          </button>
-        </form>
 
-        {/* Toggle mode */}
-        <p className="text-center text-zinc-500 text-sm mt-5">
-          {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}{' '}
-          <button
-            onClick={() => {
-              setMode(mode === 'login' ? 'signup' : 'login');
-              setError('');
-            }}
-            className="text-orange-500 font-semibold hover:text-orange-400 transition-colors cursor-pointer"
-          >
-            {mode === 'login' ? 'Sign Up' : 'Log In'}
-          </button>
-        </p>
+            {error && (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-red-200 text-xs"
+              >
+                {error}
+              </motion.p>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-2xl bg-gradient-to-r from-orange-400 via-orange-500 to-orange-600 hover:from-orange-300 hover:to-orange-500 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold text-sm py-3.5 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-orange-500/20"
+            >
+              {loading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : mode === 'login' ? (
+                'Log In'
+              ) : (
+                'Create Account'
+              )}
+            </button>
+          </form>
+
+          <div className="mt-6 flex items-center justify-between gap-3 text-xs text-zinc-500">
+            <span>{mode === 'login' ? 'Need an account?' : 'Already registered?'}</span>
+            <button
+              onClick={() => {
+                setMode(mode === 'login' ? 'signup' : 'login');
+                setError('');
+              }}
+              className="text-orange-300 font-bold hover:text-orange-200 transition-colors cursor-pointer"
+            >
+              {mode === 'login' ? 'Create one' : 'Log in instead'}
+            </button>
+          </div>
         </div>
       </div>
     </motion.div>
