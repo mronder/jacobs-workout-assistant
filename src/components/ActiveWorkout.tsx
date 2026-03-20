@@ -251,6 +251,19 @@ export default function ActiveWorkout({
     setTrackedData(newData);
   };
 
+  const setWeightUnit = (exerciseIndexes: number[], weightUnit: 'kg' | 'lbs') => {
+    const newData = [...trackedData];
+
+    exerciseIndexes.forEach((exerciseIndex) => {
+      newData[exerciseIndex] = {
+        ...newData[exerciseIndex],
+        weightUnit,
+      };
+    });
+
+    setTrackedData(newData);
+  };
+
   const addSet = (exIndex: number) => {
     const newData = [...trackedData];
     newData[exIndex] = {
@@ -568,7 +581,11 @@ export default function ActiveWorkout({
                           <div className="flex items-center gap-1.5">
                             Weight
                             <button
-                              onClick={(e) => { e.stopPropagation(); toggleWeightUnit(exIndex); toggleWeightUnit(exIndex + 1); }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const nextUnit = (trackedEx.weightUnit ?? 'lbs') === 'lbs' ? 'kg' : 'lbs';
+                                  setWeightUnit([exIndex, exIndex + 1], nextUnit);
+                                }}
                               className="text-[9px] bg-surface-3 hover:bg-elevated px-1.5 py-0.5 rounded text-orange-500 font-semibold transition-colors cursor-pointer normal-case"
                             >{trackedEx.weightUnit ?? 'lbs'}</button>
                           </div>

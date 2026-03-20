@@ -10,6 +10,34 @@
 
 import type { Env } from './_shared/types';
 
+type PlanAlternative = {
+  name: string;
+  expertAdvice: string;
+  videoSearchQuery: string;
+};
+
+type PlanExercise = {
+  name: string;
+  sets: number;
+  reps: string;
+  rest: string;
+  alternatives: PlanAlternative[];
+  videoSearchQuery: string;
+  expertAdvice: string;
+};
+
+type PlanDay = {
+  dayNumber: number;
+  focus: string;
+  description: string;
+  exercises: PlanExercise[];
+};
+
+type PlanWeek = {
+  weekNumber: number;
+  days: PlanDay[];
+};
+
 /* ------------------------------------------------------------------ */
 /*  JSON schema for structured output (OpenAI REST API format)         */
 /* ------------------------------------------------------------------ */
@@ -142,6 +170,233 @@ Return:
 - quoteAuthor: the person's name`;
 }
 
+function normalizeLevel(level: string): 'beginner' | 'intermediate' | 'advanced' {
+  const normalized = level.trim().toLowerCase();
+  if (normalized.startsWith('beg')) return 'beginner';
+  if (normalized.startsWith('inter')) return 'intermediate';
+  return 'advanced';
+}
+
+function getIntermediateSupersetDays(daysPerWeek: number): number[] {
+  const targetCount = daysPerWeek <= 3 ? 1 : daysPerWeek <= 5 ? 2 : 3;
+  const selected = new Set<number>();
+
+  for (let index = 1; index <= targetCount; index += 1) {
+    const dayNumber = Math.max(1, Math.min(daysPerWeek, Math.round((index * (daysPerWeek + 1)) / (targetCount + 1))));
+    selected.add(dayNumber);
+  }
+
+  while (selected.size < targetCount) {
+    selected.add(Math.min(daysPerWeek, selected.size + 1));
+  }
+
+  return Array.from(selected).sort((a, b) => a - b);
+}
+
+function buildSupersetRule(dayNumber: number, daysPerWeek: number, level: string): string {
+  const normalizedLevel = normalizeLevel(level);
+
+  if (normalizedLevel === 'beginner') {
+    return 'Do not include supersets anywhere in this workout. Never use the word "superset" in rest or expert advice.';
+  }
+
+  if (normalizedLevel === 'intermediate') {
+    const supersetDays = new Set(getIntermediateSupersetDays(daysPerWeek));
+    if (supersetDays.has(dayNumber)) {
+      return 'Include exactly one superset pair on this day. A superset pair must be two consecutive exercises whose rest fields both say "Superset with [partner exercise name] — 60s rest after both". Do not include more than one superset pair on this day.';
+    }
+
+    return 'Do not include any supersets on this day. Never use the word "superset" unless this day specifically allows a paired superset.';
+  }
+
+  return 'You may include zero or one superset pair on this day. If you include one, it must be two consecutive exercises whose rest fields both say "Superset with [partner exercise name] — 60s rest after both". Never include more than one superset pair on this day.';
+}
+
+function cloneExercise(exercise: PlanExercise): PlanExercise {
+  return {
+    ...exercise,
+    alternatives: exercise.alternatives.map((alternative) => ({ ...alternative })),
+  };
+}
+
+function mentionsSuperset(exercise: PlanExercise): boolean {
+  return /super\s*set/i.test(exercise.rest) || /super\s*set/i.test(exercise.expertAdvice);
+}
+
+function stripSupersetText(text: string): string {
+  return text
+    .replace(/superset\s+with\s+[^.!?\n]+(?:[-–—]\s*)?/gi, '')
+    .replace(/\bsuper\s*set\b[:\s-]*/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s+([,.;!?])/g, '$1')
+    .trim();
+}
+
+function sanitizeExerciseWithoutSuperset(exercise: PlanExercise): PlanExercise {
+  const rest = stripSupersetText(exercise.rest) || '60-90s rest';
+  const expertAdvice = stripSupersetText(exercise.expertAdvice) || 'Control the tempo and keep the target muscle engaged.';
+
+  return {
+    ...exercise,
+    rest,
+    expertAdvice,
+  };
+}
+
+function getSupersetPairStarts(exercises: PlanExercise[]): number[] {
+  const starts: number[] = [];
+
+  for (let index = 0; index < exercises.length - 1; index += 1) {
+    if (mentionsSuperset(exercises[index]) && mentionsSuperset(exercises[index + 1])) {
+      starts.push(index);
+      index += 1;
+    }
+  }
+
+  return starts;
+}
+
+function applySupersetRules(days: PlanDay[], daysPerWeek: number, level: string): PlanDay[] {
+  const normalizedLevel = normalizeLevel(level);
+  const allowedIntermediateDays = new Set(getIntermediateSupersetDays(daysPerWeek));
+
+  return days.map((day) => {
+    const pairStarts = getSupersetPairStarts(day.exercises);
+    const keptStarts = new Set<number>();
+
+    if (normalizedLevel === 'intermediate' && allowedIntermediateDays.has(day.dayNumber) && pairStarts.length > 0) {
+      keptStarts.add(pairStarts[0]);
+    }
+
+    if (normalizedLevel === 'advanced' && pairStarts.length > 0) {
+      keptStarts.add(pairStarts[0]);
+    }
+
+    return {
+      ...day,
+      exercises: day.exercises.map((exercise, index) => {
+        if (normalizedLevel === 'beginner') {
+          return sanitizeExerciseWithoutSuperset(cloneExercise(exercise));
+        }
+
+        const isKeptPairMember = keptStarts.has(index) || keptStarts.has(index - 1);
+        if (isKeptPairMember) {
+          return cloneExercise(exercise);
+        }
+
+        if (mentionsSuperset(exercise)) {
+          return sanitizeExerciseWithoutSuperset(cloneExercise(exercise));
+        }
+
+        return cloneExercise(exercise);
+      }),
+    };
+  });
+}
+
+function swapExerciseWithAlternative(exercise: PlanExercise, alternativeIndex: number): PlanExercise {
+  const alternative = exercise.alternatives[alternativeIndex];
+  if (!alternative) return cloneExercise(exercise);
+
+  return {
+    ...exercise,
+    name: alternative.name,
+    expertAdvice: alternative.expertAdvice,
+    videoSearchQuery: alternative.videoSearchQuery,
+    alternatives: exercise.alternatives.map((item, index) => (
+      index === alternativeIndex
+        ? {
+            name: exercise.name,
+            expertAdvice: exercise.expertAdvice,
+            videoSearchQuery: exercise.videoSearchQuery,
+          }
+        : { ...item }
+    )),
+  };
+}
+
+function bumpRepRange(reps: string, increase: number): string {
+  const rangeMatch = reps.match(/^(\d+)\s*[-–]\s*(\d+)(.*)$/);
+  if (rangeMatch) {
+    const low = Number(rangeMatch[1]);
+    const high = Number(rangeMatch[2]);
+    return `${low}-${high + increase}${rangeMatch[3]}`.trim();
+  }
+
+  const singleMatch = reps.match(/^(\d+)(.*)$/);
+  if (singleMatch) {
+    return `${Number(singleMatch[1]) + increase}${singleMatch[2]}`.trim();
+  }
+
+  return reps;
+}
+
+function buildWeekVariant(days: PlanDay[], weekNumber: number): PlanDay[] {
+  if (weekNumber === 1) {
+    return days.map((day) => ({
+      ...day,
+      exercises: day.exercises.map(cloneExercise),
+    }));
+  }
+
+  return days.map((day, dayIndex) => {
+    const exercises = day.exercises.map(cloneExercise);
+    const blockedIndexes = new Set(getSupersetPairStarts(exercises).flatMap((start) => [start, start + 1]));
+    const eligibleSwapIndexes = exercises
+      .map((_, index) => index)
+      .filter((index) => !blockedIndexes.has(index) && exercises[index].alternatives.length > 0);
+
+    if (eligibleSwapIndexes.length > 0) {
+      const swapIndex = eligibleSwapIndexes[(dayIndex + weekNumber - 2) % eligibleSwapIndexes.length];
+      const alternativeIndex = (weekNumber - 2) % exercises[swapIndex].alternatives.length;
+      exercises[swapIndex] = swapExerciseWithAlternative(exercises[swapIndex], alternativeIndex);
+    }
+
+    const volumeTargetIndex = exercises.findIndex((exercise, index) => !blockedIndexes.has(index) && exercise.sets < 5);
+    if (volumeTargetIndex >= 0) {
+      if (weekNumber === 2) {
+        exercises[volumeTargetIndex] = {
+          ...exercises[volumeTargetIndex],
+          sets: exercises[volumeTargetIndex].sets + 1,
+        };
+      }
+
+      if (weekNumber === 3) {
+        exercises[volumeTargetIndex] = {
+          ...exercises[volumeTargetIndex],
+          reps: bumpRepRange(exercises[volumeTargetIndex].reps, 1),
+        };
+      }
+
+      if (weekNumber === 4) {
+        exercises[volumeTargetIndex] = {
+          ...exercises[volumeTargetIndex],
+          sets: Math.max(2, exercises[volumeTargetIndex].sets - 1),
+        };
+      }
+    }
+
+    const suffix = weekNumber === 2
+      ? ' Week 2 rotates one accessory movement and adds a touch more volume.'
+      : weekNumber === 3
+        ? ' Week 3 pushes progression with a slightly harder rep target on one lift.'
+        : ' Week 4 eases volume slightly while keeping movement quality high.';
+
+    return {
+      ...day,
+      description: `${day.description}${suffix}`,
+      exercises,
+    };
+  });
+}
+
+function buildProgressiveWeeks(days: PlanDay[]): PlanWeek[] {
+  return [1, 2, 3, 4].map((weekNumber) => ({
+    weekNumber,
+    days: buildWeekVariant(days, weekNumber),
+  }));
+}
+
 /** Per-day prompt — generates one day's exercises only */
 function buildDayPrompt(
   dayNumber: number,
@@ -155,6 +410,8 @@ function buildDayPrompt(
   const goalText = secondaryGoal
     ? `${goal} (primary goal) with a secondary focus on ${secondaryGoal}`
     : goal;
+  const supersetRule = buildSupersetRule(dayNumber, daysPerWeek, level);
+
   return `You are an elite personal trainer. Create day ${dayNumber} of a ${daysPerWeek}-day "${splitName}" split for a ${level} individual whose goal is ${goalText}.
 
 This day's focus: ${dayFocus}
@@ -166,8 +423,8 @@ RULES:
 4. videoSearchQuery = short YouTube search string for the exercise.
 5. focus = short title, 1-5 words max. Example: "Chest & Triceps".
 6. description = 1-2 sentences explaining what muscle areas/sections are targeted and why. For example for a chest day: "Focus on upper, mid, and lower pec development with heavy compounds for thickness and flyes for width." Be specific about anatomy.
-7. Include at least ONE superset pair per day. A superset pair must be two consecutive exercises whose rest fields BOTH mention "Superset with [partner exercise name]". For example if exercises 3 and 4 are a superset, exercise 3's rest should say "Superset with [Exercise 4 name] — 60s rest after both" and exercise 4's rest should say "Superset with [Exercise 3 name] — 60s rest after both". Both exercises must cross-reference each other.${secondaryGoal ? `
-8. Where appropriate, incorporate exercise selection, rep ranges, or rest periods that also serve the secondary goal of ${secondaryGoal}. For example, if the secondary goal is Fat Loss, include 2-3 superset pairs and shorter rest periods; if Strength, include heavier compound movements with longer rests (and still include at least one superset for antagonist or accessory pairing).` : ''}
+7. ${supersetRule}${secondaryGoal ? `
+8. Where appropriate, incorporate exercise selection, rep ranges, or rest periods that also serve the secondary goal of ${secondaryGoal}, while still obeying the superset limits above.` : ''}
 ${secondaryGoal ? '9' : '8'}. Return dayNumber as ${dayNumber}.`;
 }
 
@@ -329,13 +586,14 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     );
 
     // Wait for everything at once — total time ≈ slowest single day (~6-10s)
-    const [meta, ...days] = await Promise.all([metaPromise, ...dayPromises]);
+    const [meta, ...rawDays] = await Promise.all([metaPromise, ...dayPromises]);
 
     /* ---------- Shape the response ---------- */
     // Sort days by dayNumber just in case
-    days.sort((a: { dayNumber: number }, b: { dayNumber: number }) => a.dayNumber - b.dayNumber);
+    const days = applySupersetRules(rawDays as PlanDay[], daysPerWeek, level)
+      .sort((a, b) => a.dayNumber - b.dayNumber);
 
-    const weeks = [1, 2, 3, 4].map((weekNumber) => ({ weekNumber, days }));
+    const weeks = buildProgressiveWeeks(days);
 
     const plan = {
       planName: meta.planName,
