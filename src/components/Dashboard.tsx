@@ -12,7 +12,18 @@ interface DashboardProps {
 }
 
 export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkout }: DashboardProps) {
-  const [activeWeek, setActiveWeek] = useState(1);
+  const [activeWeek, setActiveWeek] = useState(() => {
+    // Default to the most recent workout's week, or week 1
+    if (trackedWorkouts.length > 0) {
+      const sorted = [...trackedWorkouts].sort((a, b) => {
+        // Sort by date descending, fall back to weekNumber
+        if (a.date && b.date) return new Date(b.date).getTime() - new Date(a.date).getTime();
+        return b.weekNumber - a.weekNumber;
+      });
+      return sorted[0].weekNumber;
+    }
+    return 1;
+  });
   const [weeklyNotes, setWeeklyNotes] = useState<Record<number, string>>({});
   const [showWeekNote, setShowWeekNote] = useState(false);
 

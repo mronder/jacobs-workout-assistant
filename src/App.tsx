@@ -76,10 +76,10 @@ export default function App() {
 
   /* ---- Handlers ---- */
 
-  const handleGenerate = async (days: number, goal: string, secondaryGoal: string | null, level: string) => {
+  const handleGenerate = async (days: number, goal: string, secondaryGoal: string | null, level: string, noSupersets: boolean = false) => {
     setIsGenerating(true);
     try {
-      const newPlan = await generateWorkoutPlan(days, goal, level, secondaryGoal);
+      const newPlan = await generateWorkoutPlan(days, goal, level, secondaryGoal, noSupersets);
       setPlan(newPlan);
       setTrackedWorkouts([]);
       localStorage.setItem(STORAGE_KEYS.plan, JSON.stringify(newPlan));

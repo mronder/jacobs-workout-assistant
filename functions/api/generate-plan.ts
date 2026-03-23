@@ -490,10 +490,10 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   }
 
   try {
-    const body: { daysPerWeek?: number; goal?: string; level?: string; secondaryGoal?: string | null } =
+    const body: { daysPerWeek?: number; goal?: string; level?: string; secondaryGoal?: string | null; noSupersets?: boolean } =
       await context.request.json();
 
-    const { daysPerWeek, goal, level, secondaryGoal = null } = body;
+    const { daysPerWeek, goal, level, secondaryGoal = null, noSupersets = false } = body;
 
     if (
       typeof daysPerWeek !== 'number' ||
@@ -576,10 +576,12 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       };
     });
 
+    const effectiveLevel = noSupersets ? 'Beginner' : level;
+
     const dayPromises = dayFocuses.map((focus, idx) =>
       callOpenAI(
         sysMsg,
-        buildDayPrompt(idx + 1, focus, daysPerWeek, goal, level, splitName, secondaryGoal),
+        buildDayPrompt(idx + 1, focus, daysPerWeek, goal, effectiveLevel, splitName, secondaryGoal),
         daySchema,
         1500,
       ),
@@ -590,7 +592,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
     /* ---------- Shape the response ---------- */
     // Sort days by dayNumber just in case
-    const days = applySupersetRules(rawDays as PlanDay[], daysPerWeek, level)
+    const days = applySupersetRules(rawDays as PlanDay[], daysPerWeek, effectiveLevel)
       .sort((a, b) => a.dayNumber - b.dayNumber);
 
     const weeks = buildProgressiveWeeks(days);

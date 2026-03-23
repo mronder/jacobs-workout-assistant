@@ -73,28 +73,30 @@ export default function ActiveWorkout({
       if (saved) {
         const session = JSON.parse(saved);
         if (session.week === week && session.day === day && session.exercises?.length && workoutDay) {
-          // Validate exercise count matches current plan
-          if (session.exercises.length === workoutDay.exercises.length) {
-            // Validate each exercise name is the original or a known alternative
-            const validated = session.exercises.map((savedEx: TrackedExercise, i: number) => {
+          const planLen = workoutDay.exercises.length;
+          // Validate plan exercises (first planLen entries) match
+          if (session.exercises.length >= planLen) {
+            const validated = session.exercises.slice(0, planLen).map((savedEx: TrackedExercise, i: number) => {
               const planEx = workoutDay.exercises[i];
               if (isValidName(savedEx.exerciseName, planEx)) return savedEx;
-              // Name doesn't match — reset to original exercise name, keep set data
               return { ...savedEx, exerciseName: planEx.name };
             });
-            return validated;
+            // Append any custom exercises beyond plan length
+            const custom = session.exercises.slice(planLen);
+            return [...validated, ...custom];
           }
-          // Exercise count mismatch — discard stale session
         }
       }
     } catch { /* ignore corrupt data */ }
-    if (existingWorkout && workoutDay && existingWorkout.exercises.length === workoutDay.exercises.length) {
-      // Validate existing workout exercise names too
-      return existingWorkout.exercises.map((savedEx, i) => {
+    if (existingWorkout && workoutDay && existingWorkout.exercises.length >= workoutDay.exercises.length) {
+      const planLen = workoutDay.exercises.length;
+      const validated = existingWorkout.exercises.slice(0, planLen).map((savedEx, i) => {
         const planEx = workoutDay.exercises[i];
         if (isValidName(savedEx.exerciseName, planEx)) return savedEx;
         return { ...savedEx, exerciseName: planEx.name };
       });
+      const custom = existingWorkout.exercises.slice(planLen);
+      return [...validated, ...custom];
     }
     if (existingWorkout) return existingWorkout.exercises;
     return freshDefault();
@@ -117,6 +119,7 @@ export default function ActiveWorkout({
   const [expandedExercise, setExpandedExercise] = useState<number | null>(0);
   const [showTips, setShowTips] = useState<Record<number, boolean>>({});
   const [showSwap, setShowSwap] = useState<Record<number, boolean>>({});
+  const [customExerciseName, setCustomExerciseName] = useState('');
   const exerciseRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   // Rest timer state
@@ -271,6 +274,21 @@ export default function ActiveWorkout({
       sets: [...newData[exIndex].sets, { weight: 0, reps: 0, completed: false }],
     };
     setTrackedData(newData);
+  };
+
+  const addCustomExercise = () => {
+    const name = customExerciseName.trim();
+    if (!name) return;
+    setTrackedData(prev => [...prev, {
+      exerciseName: name,
+      weightUnit: 'lbs',
+      sets: [{ weight: 0, reps: 0, completed: false }, { weight: 0, reps: 0, completed: false }, { weight: 0, reps: 0, completed: false }],
+    }]);
+    setCustomExerciseName('');
+  };
+
+  const removeCustomExercise = (exIndex: number) => {
+    setTrackedData(prev => prev.filter((_, i) => i !== exIndex));
   };
 
   const finishWorkout = () => {
@@ -986,6 +1004,118 @@ export default function ActiveWorkout({
           );
         }); })()}
       </div>
+
+      {/* Custom Exercises */}
+      {trackedData.length > (workoutDay?.exercises.length ?? 0) && (
+        <div className="mt-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="h-px flex-1 bg-orange-500/20" />
+            <span className="text-[10px] font-bold text-orange-400 uppercase tracking-widest">Custom Exercises</span>
+            <div className="h-px flex-1 bg-orange-500/20" />
+          </div>
+          {trackedData.slice(workoutDay?.exercises.length ?? 0).map((customEx, i) => {
+            const exIndex = (workoutDay?.exercises.length ?? 0) + i;
+            const allDone = customEx.sets.every(s => s.completed);
+            const isExpanded = expandedExercise === exIndex;
+            return (
+              <div key={exIndex} ref={(el) => { exerciseRefs.current[exIndex] = el; }}
+                className={`bg-surface-1 rounded-2xl overflow-hidden transition-all shadow-card ${allDone ? 'ring-1 ring-orange-500/40' : ''}`}>
+                <div
+                  className="p-4 cursor-pointer flex items-center justify-between select-none active:bg-surface-3 transition-colors min-h-[52px]"
+                  onClick={() => setExpandedExercise(isExpanded ? null : exIndex)}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-sm font-semibold ${
+                      allDone ? 'bg-orange-500 text-black' : 'border border-border text-zinc-500'
+                    }`}>
+                      {allDone ? <Check className="w-4 h-4" /> : <span className="font-mono text-xs">C</span>}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-semibold text-sm leading-snug line-clamp-2">{customEx.exerciseName}</h3>
+                        <span className="text-[9px] text-orange-500 bg-orange-500/10 px-1.5 py-0.5 rounded font-semibold shrink-0">CUSTOM</span>
+                      </div>
+                      <p className="text-[11px] text-zinc-500 font-mono">{customEx.sets.length} sets</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {isExpanded && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); removeCustomExercise(exIndex); }}
+                        className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-red-500/15 transition-colors cursor-pointer"
+                        title="Remove exercise"
+                      >
+                        <X className="w-4 h-4 text-red-400" />
+                      </button>
+                    )}
+                    {isExpanded ? <ChevronUp className="w-4 h-4 text-zinc-600" /> : <ChevronDown className="w-4 h-4 text-zinc-600" />}
+                  </div>
+                </div>
+                {isExpanded && (
+                  <div className="px-4 pb-4 border-t border-border-subtle pt-4 space-y-4">
+                    <div>
+                      <div className="grid grid-cols-[2rem_1fr_1fr] gap-2 px-1 text-[10px] font-medium text-zinc-600 uppercase tracking-wider mb-2">
+                        <div className="text-center">Set</div>
+                        <div className="flex items-center gap-1.5">
+                          Weight
+                          <button
+                            onClick={(e) => { e.stopPropagation(); toggleWeightUnit(exIndex); }}
+                            className="text-[9px] bg-surface-3 hover:bg-elevated px-1.5 py-0.5 rounded text-orange-500 font-semibold transition-colors cursor-pointer normal-case"
+                          >{customEx.weightUnit ?? 'lbs'}</button>
+                        </div>
+                        <div>Reps</div>
+                      </div>
+                      {customEx.sets.map((set, setIndex) => (
+                        <div key={setIndex} className={`grid grid-cols-[2rem_1fr_1fr] gap-2 items-center py-1.5 px-1 rounded-xl transition-colors ${set.completed ? 'bg-orange-500/12' : ''}`}>
+                          <div className={`text-center font-mono text-sm transition-colors ${set.completed ? 'text-orange-500 font-bold' : 'text-zinc-500'}`}>
+                            {set.completed ? '✓' : setIndex + 1}
+                          </div>
+                          <input type="number" inputMode="decimal" step="any" placeholder="0"
+                            value={set.weight || ''} onChange={(e) => updateSet(exIndex, setIndex, 'weight', parseFloat(e.target.value) || 0)}
+                            className="w-full bg-ground/60 border border-border-subtle rounded-lg px-2 py-3 text-center text-base text-white focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 transition-colors min-h-[44px]" />
+                          <input type="number" inputMode="numeric" placeholder="0"
+                            value={set.reps || ''} onChange={(e) => updateSet(exIndex, setIndex, 'reps', Number(e.target.value))}
+                            className="w-full bg-ground/60 border border-border-subtle rounded-lg px-2 py-3 text-center text-base text-white focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 transition-colors min-h-[44px]" />
+                        </div>
+                      ))}
+                      <button onClick={() => addSet(exIndex)}
+                        className="w-full py-2.5 mt-2 border border-dashed border-border rounded-lg text-xs text-zinc-600 hover:text-zinc-400 hover:border-zinc-500 transition-colors flex items-center justify-center gap-1 cursor-pointer min-h-[44px]">
+                        <Plus className="w-3 h-3" /> Add Set
+                      </button>
+                    </div>
+                    <textarea placeholder="Add a note about this exercise..."
+                      value={customEx.note ?? ''} onChange={(e) => updateExerciseNote(exIndex, e.target.value)} rows={2}
+                      className="w-full bg-transparent border border-transparent rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-border-subtle focus:bg-ground/60 transition-colors resize-none" />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Add Custom Exercise */}
+      <div className="mt-4 bg-surface-1 rounded-2xl p-4 shadow-card border border-white/8">
+        <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-medium mb-3">Add Your Own Exercise</p>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="Exercise name..."
+            value={customExerciseName}
+            onChange={(e) => setCustomExerciseName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') addCustomExercise(); }}
+            className="flex-1 bg-ground/60 border border-border-subtle rounded-xl px-3 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30 transition-colors min-h-[44px]"
+          />
+          <button
+            onClick={addCustomExercise}
+            disabled={!customExerciseName.trim()}
+            className="px-4 py-3 rounded-xl bg-orange-500 text-black font-bold text-sm transition-all cursor-pointer active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px] flex items-center gap-1.5"
+          >
+            <Plus className="w-4 h-4" /> Add
+          </button>
+        </div>
+      </div>
+
       <div className="mt-6">
         <textarea
           placeholder="How did today's workout feel? Add notes here..."

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Flame, Target, Zap, ChevronRight, ChevronLeft, Rocket } from 'lucide-react';
 
 interface SetupProps {
-  onGenerate: (days: number, goal: string, secondaryGoal: string | null, level: string) => void;
+  onGenerate: (days: number, goal: string, secondaryGoal: string | null, level: string, noSupersets: boolean) => void;
 }
 
 const goals = [
@@ -28,6 +28,7 @@ export default function Setup({ onGenerate }: SetupProps) {
   const [goal, setGoal] = useState('Hypertrophy (Muscle Growth)');
   const [secondaryGoal, setSecondaryGoal] = useState<string | null>(null);
   const [level, setLevel] = useState('Intermediate');
+  const [noSupersets, setNoSupersets] = useState(false);
 
   const goNext = () => {
     if (step < TOTAL_STEPS - 1) {
@@ -290,8 +291,32 @@ export default function Setup({ onGenerate }: SetupProps) {
                   </button>
                 ))}
               </div>
+              {/* Superset Exclusion Toggle */}
+              <div className="mb-6">
+                <button
+                  onClick={() => setNoSupersets(!noSupersets)}
+                  className={`w-full py-4 px-5 rounded-[24px] border text-left transition-all duration-200 cursor-pointer flex items-center justify-between shadow-card ${
+                    noSupersets
+                      ? 'border-orange-300/40 bg-gradient-to-r from-orange-400/15 to-transparent text-white'
+                      : 'border-white/8 bg-surface-1/80 text-zinc-400 hover:border-orange-300/15 hover:bg-surface-2 hover:text-zinc-200'
+                  }`}
+                >
+                  <div>
+                    <div className="text-sm font-bold">Exclude Supersets</div>
+                    <div className="text-xs text-zinc-500 mt-1">No paired exercises — straight sets only</div>
+                  </div>
+                  <div className={`w-12 h-7 rounded-full p-1 transition-colors ${
+                    noSupersets ? 'bg-orange-500' : 'bg-surface-3'
+                  }`}>
+                    <div className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                      noSupersets ? 'translate-x-5' : 'translate-x-0'
+                    }`} />
+                  </div>
+                </button>
+              </div>
+
               <motion.button
-                onClick={() => onGenerate(days, goal, secondaryGoal, level)}
+                onClick={() => onGenerate(days, goal, secondaryGoal, level, noSupersets)}
                 className="w-full py-5 bg-gradient-to-r from-orange-300 via-orange-500 to-orange-600 hover:from-orange-300 hover:to-orange-500 text-black font-bold text-lg rounded-[26px] transition-all duration-200 flex items-center justify-center gap-2.5 cursor-pointer shadow-lg shadow-orange-500/25 active:scale-[0.98]"
                 whileTap={{ scale: 0.97 }}
               >
