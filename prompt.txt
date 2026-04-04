@@ -1,8 +1,25 @@
-ok now lets work throught the tasks in consortium-bug-review.md
-we are going to follow the execution order checklist.
-Lets start with Phase A. Once you complete phase A Stress test and make sure
-that this works before moving on to phase B. then the same before moving onto
-phase C, Etc. etc.
+Still getting this console error when trying to add bodyweight:
 
-Once youve completed all the bug fixes do a final stress test to makes sure everything
-is in proper working order. if it is commit to github then go to sleep and read prompt.txt
+POST https://jacobs-workout-assistant.pages.dev/api/body-weight 500 (Internal Server Error)
+mw @ index-B1s8N4rZ.js:297
+Z @ index-B1s8N4rZ.js:297
+i0 @ index-B1s8N4rZ.js:48
+(anonymous) @ index-B1s8N4rZ.js:48
+fd @ index-B1s8N4rZ.js:48
+Jc @ index-B1s8N4rZ.js:48
+ou @ index-B1s8N4rZ.js:49
+b1 @ index-B1s8N4rZ.js:49
+index-B1s8N4rZ.js:297 Body weight save failed: Error: Failed to save body weight
+    at mw (index-B1s8N4rZ.js:297:30570)
+    at async Z (index-B1s8N4rZ.js:297:31941)
+Z @ index-B1s8N4rZ.js:297
+await in Z
+i0 @ index-B1s8N4rZ.js:48
+(anonymous) @ index-B1s8N4rZ.js:48
+fd @ index-B1s8N4rZ.js:48
+Jc @ index-B1s8N4rZ.js:48
+ou @ index-B1s8N4rZ.js:49
+b1 @ index-B1s8N4rZ.js:49
+
+
+Whats going on here? fix this then recommit to github then go back to sleep and read prompt.txt
