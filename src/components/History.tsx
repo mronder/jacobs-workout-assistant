@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, ChevronRight, Trophy, ArrowLeft, Dumbbell, Calendar, TrendingUp, RefreshCw } from 'lucide-react';
+import { Search, ChevronRight, Trophy, ArrowLeft, Dumbbell, Calendar, TrendingUp, RefreshCw, Scale, ChevronDown, ChevronUp } from 'lucide-react';
 import {
   getDistinctExercises,
   getExerciseHistory,
@@ -11,6 +11,7 @@ import {
   type PersonalRecord,
   type ProgressionPoint,
 } from '../services/history';
+import { loadBodyWeightHistory, type BodyWeightEntry } from '../services/bodyWeight';
 import ProgressChart from './ProgressChart';
 
 export default function History({ weightUnit = 'lbs' }: { weightUnit?: string }) {
@@ -20,6 +21,8 @@ export default function History({ weightUnit = 'lbs' }: { weightUnit?: string })
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedExercise, setSelectedExercise] = useState<string | null>(null);
+  const [bwEntries, setBwEntries] = useState<BodyWeightEntry[]>([]);
+  const [bwExpanded, setBwExpanded] = useState(false);
 
   const loadExercises = () => {
     setLoading(true);
@@ -38,6 +41,7 @@ export default function History({ weightUnit = 'lbs' }: { weightUnit?: string })
 
   useEffect(() => {
     loadExercises();
+    loadBodyWeightHistory(365).then(setBwEntries).catch((err) => console.error('Failed to load body weight history:', err));
   }, []);
 
   useEffect(() => {
@@ -107,6 +111,39 @@ export default function History({ weightUnit = 'lbs' }: { weightUnit?: string })
             <h2 className="text-xl font-extrabold tracking-tight mb-1">Exercise History</h2>
             <p className="text-zinc-500 text-sm">Track your progress over time</p>
           </div>
+
+          {/* Body Weight History */}
+          {bwEntries.length > 0 && (
+            <div className="bg-surface-1 rounded-xl border border-white/8 shadow-card mb-4 overflow-hidden">
+              <button
+                onClick={() => setBwExpanded(!bwExpanded)}
+                className="w-full px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-surface-3/50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-orange-500/10 border border-orange-500/15 flex items-center justify-center">
+                    <Scale className="w-4 h-4 text-orange-500" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm font-semibold text-white">Body Weight</p>
+                    <p className="text-xs text-zinc-500">{bwEntries.length} entr{bwEntries.length === 1 ? 'y' : 'ies'}</p>
+                  </div>
+                </div>
+                {bwExpanded ? <ChevronUp className="w-4 h-4 text-zinc-600" /> : <ChevronDown className="w-4 h-4 text-zinc-600" />}
+              </button>
+              {bwExpanded && (
+                <div className="px-4 pb-4 space-y-1.5 max-h-64 overflow-y-auto">
+                  {[...bwEntries].reverse().map((e) => (
+                    <div key={e.id} className="flex items-center justify-between py-1.5 border-b border-white/5 last:border-0">
+                      <span className="text-xs text-zinc-400">
+                        {new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                      <span className="text-sm font-bold text-orange-200">{e.weight} {e.unit}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {exercises.length === 0 ? (
             <div className="text-center py-16">

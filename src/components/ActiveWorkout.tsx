@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Check, PlayCircle, Info, ChevronDown, ChevronUp, Plus, Timer, ArrowLeft, MessageSquare, MoreVertical, Trophy } from 'lucide-react';
 import { WorkoutPlan, TrackedWorkout, TrackedExercise } from '../types';
 import { STORAGE_KEYS } from '../storageKeys';
-import { loadCustomExercises, addCustomExercise as apiAddCustomExercise, removeCustomExercise as apiRemoveCustomExercise } from '../services/customExercises';
+import { loadCustomExercises, addCustomExercise as apiAddCustomExercise, removeCustomExercise as apiRemoveCustomExercise, type CustomExercise } from '../services/customExercises';
 import { fetchLastSessionData, type LastSessionMap } from '../services/history';
 import { getSuggestion, type ProgressionSuggestion } from '../utils/progression';
 
@@ -126,13 +126,27 @@ export default function ActiveWorkout({
   const [showTips, setShowTips] = useState<Record<number, boolean>>({});
   const [showSwap, setShowSwap] = useState<Record<number, boolean>>({});
   const [customExerciseName, setCustomExerciseName] = useState('');
+  const [customGuidance, setCustomGuidance] = useState<Record<string, { targetReps?: string; restPeriod?: string; expertAdvice?: string }>>({});
+  const [loadingCustoms, setLoadingCustoms] = useState(false);
+  const [aiLoadingExercise, setAiLoadingExercise] = useState<string | null>(null);
   const exerciseRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   // Load persisted custom exercises from the server and merge into trackedData
   useEffect(() => {
     if (!planId) return;
+    setLoadingCustoms(true);
     loadCustomExercises(planId, day).then((customs) => {
-      if (customs.length === 0) return;
+      if (customs.length === 0) { setLoadingCustoms(false); return; }
+      // Store guidance data from DB
+      const guidance: Record<string, { targetReps?: string; restPeriod?: string; expertAdvice?: string }> = {};
+      customs.forEach(c => {
+        if (c.targetReps || c.restPeriod || c.expertAdvice) {
+          guidance[c.exerciseName] = { targetReps: c.targetReps, restPeriod: c.restPeriod, expertAdvice: c.expertAdvice };
+        }
+      });
+      if (Object.keys(guidance).length > 0) {
+        setCustomGuidance(prev => ({ ...prev, ...guidance }));
+      }
       setTrackedData(prev => {
         const planLen = workoutDay?.exercises.length ?? 0;
         const existingCustomNames = new Set(prev.slice(planLen).map(e => e.exerciseName));
@@ -150,7 +164,8 @@ export default function ActiveWorkout({
         if (newCustoms.length === 0) return prev;
         return [...prev, ...newCustoms];
       });
-    }).catch(() => { /* ignore — custom exercises are optional */ });
+      setLoadingCustoms(false);
+    }).catch(() => { setLoadingCustoms(false); });
   }, [planId, day, workoutDay]);
 
   // Last session data for progressive overload ghost rows
@@ -371,6 +386,7 @@ export default function ActiveWorkout({
     const name = customExerciseName.trim();
     if (!name) return;
     setCustomExerciseName('');
+    setAiLoadingExercise(name);
 
     // Start with sensible defaults immediately so UI is responsive
     const defaultSets = 3;
@@ -387,7 +403,12 @@ export default function ActiveWorkout({
       return updated;
     });
 
-    // Fire AI suggestion in background — update sets/reps count if they come back
+    // Fire AI suggestion in background — update sets and store guidance
+    let aiSets = defaultSets;
+    let aiReps: string | undefined;
+    let aiRest: string | undefined;
+    let aiAdvice: string | undefined;
+
     try {
       const res = await fetch('/api/suggest-exercise', {
         method: 'POST',
@@ -397,15 +418,26 @@ export default function ActiveWorkout({
       });
       if (res.ok) {
         const suggestion: { sets: number; reps: string; rest: string; expertAdvice: string } = await res.json();
+        aiSets = suggestion.sets || defaultSets;
+        aiReps = suggestion.reps;
+        aiRest = suggestion.rest;
+        aiAdvice = suggestion.expertAdvice;
+
+        // Store guidance for display
+        setCustomGuidance(prev => ({
+          ...prev,
+          [name]: { targetReps: aiReps, restPeriod: aiRest, expertAdvice: aiAdvice },
+        }));
+
         // Update the exercise's set count if AI suggests different
-        if (suggestion.sets && suggestion.sets !== defaultSets) {
+        if (aiSets !== defaultSets) {
           setTrackedData(prev => {
             const idx = prev.findIndex(e => e.exerciseName === name && e.sets.length === defaultSets);
             if (idx < 0) return prev;
             const updated = [...prev];
             updated[idx] = {
               ...updated[idx],
-              sets: Array.from({ length: suggestion.sets }, () => ({ weight: 0, reps: 0, completed: false })),
+              sets: Array.from({ length: aiSets }, () => ({ weight: 0, reps: 0, completed: false })),
             };
             setTimeout(() => flushSaveImmediately(), 0);
             return updated;
@@ -413,13 +445,21 @@ export default function ActiveWorkout({
         }
       }
     } catch {
-      // Ignore — defaults are already applied
+      // Provide fallback guidance when AI fails
+      setCustomGuidance(prev => ({
+        ...prev,
+        [name]: { targetReps: '8-12', restPeriod: '60-90s', expertAdvice: 'Focus on controlled form and full range of motion.' },
+      }));
+      aiReps = '8-12';
+      aiRest = '60-90s';
+      aiAdvice = 'Focus on controlled form and full range of motion.';
     }
 
-    // Also persist to the custom exercises table so it carries forward to future weeks
+    // Persist to the custom exercises table with AI guidance
     if (planId) {
-      apiAddCustomExercise(planId, day, name, defaultSets).catch(() => { /* ignore — tracked data is the source of truth */ });
+      apiAddCustomExercise(planId, day, name, aiSets, aiReps, aiRest, aiAdvice).catch((err) => console.error('Failed to persist custom exercise:', err));
     }
+    setAiLoadingExercise(null);
   };
 
   const removeCustomExercise = (exIndex: number) => {
@@ -433,7 +473,7 @@ export default function ActiveWorkout({
     if (planId && exerciseName) {
       loadCustomExercises(planId, day).then(customs => {
         const match = customs.find(c => c.exerciseName === exerciseName);
-        if (match) apiRemoveCustomExercise(match.id).catch(() => {});
+        if (match) apiRemoveCustomExercise(match.id).catch((err) => console.error('Failed to remove custom exercise:', err));
       }).catch(() => {});
     }
   };
@@ -1186,6 +1226,14 @@ export default function ActiveWorkout({
         }); })()}
       </div>
 
+      {/* Custom Exercises Loading */}
+      {loadingCustoms && (
+        <div className="mt-4 flex items-center gap-2 justify-center py-3">
+          <div className="w-3 h-3 rounded-full bg-orange-500/30 animate-pulse" />
+          <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Loading custom exercises...</span>
+        </div>
+      )}
+
       {/* Custom Exercises */}
       {trackedData.length > (workoutDay?.exercises.length ?? 0) && (
         <div className="mt-4 space-y-3">
@@ -1217,6 +1265,14 @@ export default function ActiveWorkout({
                         <span className="text-[9px] text-orange-500 bg-orange-500/10 px-1.5 py-0.5 rounded font-semibold shrink-0">CUSTOM</span>
                       </div>
                       <p className="text-[11px] text-zinc-500 font-mono">{customEx.sets.length} sets</p>
+                      {aiLoadingExercise === customEx.exerciseName ? (
+                        <p className="text-[10px] text-orange-400/60 animate-pulse mt-0.5">Getting recommendations...</p>
+                      ) : customGuidance[customEx.exerciseName]?.targetReps ? (
+                        <p className="text-[10px] text-orange-400/70 mt-0.5">
+                          Target: {customGuidance[customEx.exerciseName].targetReps}
+                          {customGuidance[customEx.exerciseName]?.restPeriod && ` · ${customGuidance[customEx.exerciseName].restPeriod} rest`}
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
@@ -1263,7 +1319,21 @@ export default function ActiveWorkout({
                         className="w-full py-2.5 mt-2 border border-dashed border-border rounded-lg text-xs text-zinc-600 hover:text-zinc-400 hover:border-zinc-500 transition-colors flex items-center justify-center gap-1 cursor-pointer min-h-[44px]">
                         <Plus className="w-3 h-3" /> Add Set
                       </button>
+                      {customGuidance[customEx.exerciseName]?.restPeriod && (
+                        <button
+                          onClick={() => startRestTimer(exIndex, customGuidance[customEx.exerciseName].restPeriod!)}
+                          className="w-full py-2 mt-1 text-[11px] text-orange-400/70 hover:text-orange-400 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Timer className="w-3 h-3" /> Start rest ({customGuidance[customEx.exerciseName].restPeriod})
+                        </button>
+                      )}
                     </div>
+                    {customGuidance[customEx.exerciseName]?.expertAdvice && (
+                      <div className="flex items-start gap-2 bg-orange-500/8 border border-orange-500/15 rounded-xl p-3">
+                        <Info className="w-3.5 h-3.5 text-orange-500 shrink-0 mt-0.5" />
+                        <p className="text-xs text-zinc-400 leading-relaxed">{customGuidance[customEx.exerciseName].expertAdvice}</p>
+                      </div>
+                    )}
                     <textarea placeholder="Add a note about this exercise..."
                       value={customEx.note ?? ''} onChange={(e) => updateExerciseNote(exIndex, e.target.value)} rows={2}
                       className="w-full bg-transparent border border-transparent rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-border-subtle focus:bg-ground/60 transition-colors resize-none" />

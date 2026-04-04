@@ -121,6 +121,9 @@ CREATE TABLE IF NOT EXISTS custom_exercises (
   exercise_name TEXT NOT NULL,
   sets          INTEGER NOT NULL DEFAULT 3,
   position      INTEGER NOT NULL DEFAULT 99,
+  target_reps   TEXT,
+  rest_period   TEXT,
+  expert_advice TEXT,
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_custom_exercises_plan ON custom_exercises(user_id, plan_id, day_number);

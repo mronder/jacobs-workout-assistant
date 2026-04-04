@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Dumbbell, RefreshCw, Flame, LogOut } from 'lucide-react';
 import { WorkoutPlan, TrackedWorkout, TrackedExercise } from './types';
@@ -8,6 +8,7 @@ import { savePlan, loadActivePlan, deactivatePlan } from './services/plans';
 import { saveTrackedWorkout, loadTrackedWorkouts } from './services/tracking';
 import { generateDeloadWeek } from './utils/deload';
 import { loadPreferences } from './services/preferences';
+import { useToast } from './contexts/ToastContext';
 
 import Auth from './components/Auth';
 import Setup from './components/Setup';
@@ -22,10 +23,13 @@ import { STORAGE_KEYS } from './storageKeys';
 
 export default function App() {
   const { user, loading: authLoading, signOut } = useAuth();
+  const { showToast } = useToast();
 
   const [plan, setPlan] = useState<WorkoutPlan | null>(null);
   const [planId, setPlanId] = useState<string | null>(null);
   const [trackedWorkouts, setTrackedWorkouts] = useState<TrackedWorkout[]>([]);
+  // Snapshot for undo after program completion actions
+  const undoSnapshot = useRef<{ plan: WorkoutPlan; planId: string | null; tracked: TrackedWorkout[] } | null>(null);
   const [activeWorkout, setActiveWorkout] = useState<{ week: number; day: number } | null>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.activeSession);
@@ -138,12 +142,22 @@ export default function App() {
     localStorage.removeItem(STORAGE_KEYS.activeSession);
     setActiveWorkout(null);
 
-    // Check if program is complete (all weeks × all days completed)
+    // Check if program is complete — trigger when the last day of the final week is finished
     if (plan && workout.completed) {
-      const totalWorkouts = plan.weeks.reduce((acc, week) => acc + week.days.length, 0);
-      const completedCount = updated.filter(tw => tw.completed).length;
-      if (completedCount >= totalWorkouts) {
-        setTimeout(() => setShowProgramComplete(true), 2000); // Delay to let celebration play
+      const finalWeek = plan.weeks[plan.weeks.length - 1];
+      const finalWeekNumber = finalWeek.weekNumber;
+      const lastDayNumber = Math.max(...finalWeek.days.map(d => d.dayNumber));
+
+      // Primary: completing the very last day of the final week
+      const isLastDay = workout.weekNumber === finalWeekNumber && workout.dayNumber === lastDayNumber;
+      // Fallback: all days of the final week are completed
+      const finalWeekCompleted = updated.filter(
+        tw => tw.weekNumber === finalWeekNumber && tw.completed
+      ).length;
+      const allFinalWeekDone = finalWeekCompleted >= finalWeek.days.length;
+
+      if (isLastDay || allFinalWeekDone) {
+        setTimeout(() => setShowProgramComplete(true), 2000);
       }
     }
 
@@ -193,10 +207,22 @@ export default function App() {
   };
 
   const handleProgramLoop = () => {
+    // Save snapshot for undo
+    undoSnapshot.current = { plan: plan!, planId, tracked: trackedWorkouts };
     // Reset tracked workouts but keep the same plan
     setTrackedWorkouts([]);
     localStorage.setItem(STORAGE_KEYS.tracked, JSON.stringify([]));
     setShowProgramComplete(false);
+    showToast('Restarting from Week 1', 'success', {
+      label: 'Undo',
+      onClick: () => {
+        if (undoSnapshot.current) {
+          setTrackedWorkouts(undoSnapshot.current.tracked);
+          localStorage.setItem(STORAGE_KEYS.tracked, JSON.stringify(undoSnapshot.current.tracked));
+          undoSnapshot.current = null;
+        }
+      },
+    }, 8000);
   };
 
   const handleProgramProgress = async () => {
@@ -259,6 +285,8 @@ export default function App() {
 
   const handleProgramDeload = () => {
     if (!plan) return;
+    // Save snapshot for undo
+    undoSnapshot.current = { plan, planId, tracked: trackedWorkouts };
     setShowProgramComplete(false);
 
     // Generate deload week locally from Week 1 data
@@ -277,6 +305,19 @@ export default function App() {
     setTrackedWorkouts([]);
     localStorage.setItem(STORAGE_KEYS.plan, JSON.stringify(deloadPlan));
     localStorage.setItem(STORAGE_KEYS.tracked, JSON.stringify([]));
+    showToast('Deload week active', 'success', {
+      label: 'Undo',
+      onClick: () => {
+        if (undoSnapshot.current) {
+          setPlan(undoSnapshot.current.plan);
+          setPlanId(undoSnapshot.current.planId);
+          setTrackedWorkouts(undoSnapshot.current.tracked);
+          localStorage.setItem(STORAGE_KEYS.plan, JSON.stringify(undoSnapshot.current.plan));
+          localStorage.setItem(STORAGE_KEYS.tracked, JSON.stringify(undoSnapshot.current.tracked));
+          undoSnapshot.current = null;
+        }
+      },
+    }, 8000);
   };
 
   /* ---- Auth loading state ---- */
@@ -415,6 +456,7 @@ export default function App() {
                   planId={planId}
                   trackedWorkouts={trackedWorkouts}
                   onStartWorkout={(w, d) => setActiveWorkout({ week: w, day: d })}
+                  onManualComplete={() => setShowProgramComplete(true)}
                   weightUnit={weightUnit}
                 />
               </ErrorBoundary>
@@ -430,10 +472,12 @@ export default function App() {
       {showProgramComplete && plan && (
         <ProgramComplete
           planName={plan.planName}
+          weekCount={plan.weeks.length}
           onLoop={handleProgramLoop}
           onProgress={handleProgramProgress}
           onNewPlan={handleProgramNewPlan}
           onDeload={handleProgramDeload}
+          onDismiss={() => setShowProgramComplete(false)}
         />
       )}
     </div>

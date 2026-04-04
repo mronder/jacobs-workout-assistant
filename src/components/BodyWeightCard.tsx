@@ -17,6 +17,8 @@ export default function BodyWeightCard({ planId, defaultUnit = 'lbs' }: BodyWeig
   const [weightInput, setWeightInput] = useState('');
   const [unit, setUnit] = useState<'lbs' | 'kg'>(defaultUnit);
   const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -25,23 +27,31 @@ export default function BodyWeightCard({ planId, defaultUnit = 'lbs' }: BodyWeig
       const rolling = computeRollingAverage(data);
       setRollingData(rolling);
       setTrend(computeTrend(rolling));
-    }).catch(() => {});
+    }).catch((err) => console.error('Failed to load body weight history:', err));
   }, []);
 
   const handleSave = async () => {
     const w = parseFloat(weightInput);
     if (!w || w <= 0) return;
     setSaving(true);
+    setError(null);
+    setSaveSuccess(false);
     try {
       await saveBodyWeight(w, unit);
       setWeightInput('');
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2500);
       // Refresh data
       const data = await loadBodyWeightHistory(90);
       setEntries(data);
       const rolling = computeRollingAverage(data);
       setRollingData(rolling);
       setTrend(computeTrend(rolling));
-    } catch { /* ignore */ }
+    } catch (err) {
+      console.error('Body weight save failed:', err);
+      setError('Failed to save. Check your connection and try again.');
+      setTimeout(() => setError(null), 5000);
+    }
     setSaving(false);
   };
 
@@ -206,19 +216,26 @@ export default function BodyWeightCard({ planId, defaultUnit = 'lbs' }: BodyWeig
                 <button
                   onClick={handleSave}
                   disabled={!weightInput || saving}
-                  className="bg-orange-500 text-black font-bold px-4 py-3 rounded-xl text-sm transition-all cursor-pointer active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px]"
+                  className={`${saveSuccess ? 'bg-green-500' : 'bg-orange-500'} text-black font-bold px-4 py-3 rounded-xl text-sm transition-all cursor-pointer active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px]`}
                 >
-                  {saving ? '...' : 'Log'}
+                  {saving ? '...' : saveSuccess ? '✓' : 'Log'}
                 </button>
               </div>
+              {error && <p className="text-xs text-red-400 text-center">{error}</p>}
+              {saveSuccess && entries.length <= 1 && (
+                <p className="text-xs text-green-400/80 text-center">Logged! Add entries over the next few days to see your trend chart.</p>
+              )}
 
               {/* Chart */}
               {rollingData.length >= 2 ? (
                 <div className="rounded-xl bg-ground/40 border border-white/5 p-2">
                   <canvas ref={canvasRef} className="w-full" style={{ height: 140 }} />
                 </div>
-              ) : entries.length > 0 ? (
-                <p className="text-xs text-zinc-500 text-center py-4">Log a few more entries to see your trend chart</p>
+              ) : entries.length === 1 ? (
+                <div className="rounded-xl bg-ground/40 border border-white/5 px-4 py-6 text-center">
+                  <p className="text-sm font-bold text-orange-200">Today: {entries[0].weight} {entries[0].unit}</p>
+                  <p className="text-xs text-zinc-500 mt-1">More entries will unlock your trend chart</p>
+                </div>
               ) : null}
             </div>
           </motion.div>

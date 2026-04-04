@@ -1,1 +1,8 @@
-Commit this to github then go back to sleep and read prompt.txt 
+ok now lets work throught the tasks in consortium-bug-review.md
+we are going to follow the execution order checklist.
+Lets start with Phase A. Once you complete phase A Stress test and make sure
+that this works before moving on to phase B. then the same before moving onto
+phase C, Etc. etc.
+
+Once youve completed all the bug fixes do a final stress test to makes sure everything
+is in proper working order. if it is commit to github then go to sleep and read prompt.txt

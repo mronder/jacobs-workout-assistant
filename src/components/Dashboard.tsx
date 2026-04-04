@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'motion/react';
-import { Play, CheckCircle, ChevronRight, MessageSquare } from 'lucide-react';
+import { Play, CheckCircle, ChevronRight, MessageSquare, Flag } from 'lucide-react';
 import { WorkoutPlan, TrackedWorkout } from '../types';
 import { STORAGE_KEYS } from '../storageKeys';
 import { loadWeeklyNotes, saveWeeklyNote } from '../services/tracking';
+import { loadCustomExercises, type CustomExercise } from '../services/customExercises';
 import BodyWeightCard from './BodyWeightCard';
 
 interface DashboardProps {
@@ -11,10 +12,11 @@ interface DashboardProps {
   planId: string | null;
   trackedWorkouts: TrackedWorkout[];
   onStartWorkout: (week: number, day: number) => void;
+  onManualComplete?: () => void;
   weightUnit?: 'lbs' | 'kg';
 }
 
-export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkout, weightUnit = 'lbs' }: DashboardProps) {
+export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkout, onManualComplete, weightUnit = 'lbs' }: DashboardProps) {
   const [activeWeek, setActiveWeek] = useState(() => {
     // Default to the most recent workout's week, or week 1
     if (trackedWorkouts.length > 0) {
@@ -29,6 +31,7 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
   });
   const [weeklyNotes, setWeeklyNotes] = useState<Record<number, string>>({});
   const [showWeekNote, setShowWeekNote] = useState(false);
+  const [customExercisesByDay, setCustomExercisesByDay] = useState<Record<number, CustomExercise[]>>({});
 
   // Check for in-progress session to show resume banner
   const [resumeSession, setResumeSession] = useState<{ week: number; day: number } | null>(null);
@@ -60,6 +63,19 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
     }).catch(() => { /* ignore */ });
   }, [planId]);
 
+  // Load custom exercises for all days
+  useEffect(() => {
+    if (!planId) return;
+    loadCustomExercises(planId).then((customs) => {
+      const byDay: Record<number, CustomExercise[]> = {};
+      for (const c of customs) {
+        if (!byDay[c.dayNumber]) byDay[c.dayNumber] = [];
+        byDay[c.dayNumber].push(c);
+      }
+      setCustomExercisesByDay(byDay);
+    }).catch((err) => console.error('Failed to load custom exercises for dashboard:', err));
+  }, [planId]);
+
   // Debounced save for weekly notes
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleWeekNoteChange = useCallback((value: string) => {
@@ -82,6 +98,14 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
   ).length ?? 0;
   const currentWeekTotal = currentWeek?.days.length ?? 0;
   const currentWeekRemaining = Math.max(0, currentWeekTotal - currentWeekCompleted);
+
+  const totalWeeks = plan.weeks.length;
+  const isFinalWeek = activeWeek === totalWeeks;
+  const finalWeekData = plan.weeks[totalWeeks - 1];
+  const finalWeekCompletedCount = finalWeekData?.days.filter((d) =>
+    trackedWorkouts.some((tw) => tw.weekNumber === totalWeeks && tw.dayNumber === d.dayNumber && tw.completed)
+  ).length ?? 0;
+  const showManualComplete = onManualComplete && isFinalWeek && finalWeekCompletedCount >= Math.ceil((finalWeekData?.days.length ?? 0) / 2);
 
   return (
     <motion.div
@@ -130,7 +154,7 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
             </div>
             <div className="shrink-0 rounded-2xl border border-white/8 bg-black/20 px-3 py-2 text-right">
               <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-500 mb-1">Week</p>
-              <p className="font-mono text-lg font-bold text-orange-200">{activeWeek}/4</p>
+              <p className="font-mono text-lg font-bold text-orange-200">{activeWeek}/{plan.weeks.length}</p>
             </div>
           </div>
 
@@ -152,6 +176,16 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
           <div className="border-l-2 border-orange-500/30 pl-3">
             <p className="text-xs text-zinc-400 italic leading-relaxed">"{plan.motivationalQuote}" — {plan.quoteAuthor}</p>
           </div>
+
+          {showManualComplete && (
+            <button
+              onClick={onManualComplete}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl border border-orange-500/20 bg-orange-500/8 text-orange-300 text-xs font-semibold hover:bg-orange-500/15 transition-colors cursor-pointer"
+            >
+              <Flag className="w-3.5 h-3.5" />
+              Finished this program?
+            </button>
+          )}
         </div>
       </div>
 
@@ -161,6 +195,9 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
           <div className="flex-1 min-w-0">
             <div className="text-2xl font-extrabold font-mono text-orange-500">{progress}%</div>
             <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-medium mt-0.5">Overall Progress</div>
+            <div className="text-[11px] text-zinc-400 mt-1 font-medium">
+              {isFinalWeek ? '🏁 Final Week' : `Week ${activeWeek} of ${totalWeeks}`}
+            </div>
           </div>
         </div>
         <StatCard label="Completed" value={`${completedCount}`} color="green" />
@@ -168,7 +205,7 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-        {[1, 2, 3, 4].map((w) => {
+        {plan.weeks.map((wk) => wk.weekNumber).map((w) => {
           const weekData = plan.weeks.find((wk) => wk.weekNumber === w);
           const totalDays = weekData?.days.length ?? 0;
           const completedDays = weekData?.days.filter((d) =>
@@ -278,7 +315,7 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
               </div>
 
               <div className="flex items-center gap-2 flex-wrap mb-3">
-                <span className="rounded-full border border-white/8 bg-black/15 px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-zinc-400">{day.exercises.length} exercises</span>
+                <span className="rounded-full border border-white/8 bg-black/15 px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-zinc-400">{day.exercises.length + (customExercisesByDay[day.dayNumber]?.length ?? 0)} exercises</span>
                 {completed ? (
                   <span className="rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-orange-200">Completed</span>
                 ) : (
@@ -300,9 +337,22 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
                     </p>
                   </div>
                 ))}
-                {day.exercises.length > 4 && (
+                {(customExercisesByDay[day.dayNumber] ?? []).slice(0, Math.max(0, 4 - day.exercises.length)).map((ce) => (
+                  <div
+                    key={`custom-${ce.id}`}
+                    className="bg-ground/55 border border-orange-500/15 rounded-2xl px-3 py-2.5 shrink-0"
+                  >
+                    <p className="text-[11px] font-semibold text-orange-200 truncate max-w-[132px]">
+                      {ce.exerciseName}
+                    </p>
+                    <p className="text-[10px] text-orange-500/60 font-mono mt-1">
+                      {ce.sets}s · Custom
+                    </p>
+                  </div>
+                ))}
+                {(day.exercises.length + (customExercisesByDay[day.dayNumber]?.length ?? 0)) > 4 && (
                   <div className="bg-ground/55 border border-white/8 rounded-2xl px-3 py-2 shrink-0 flex items-center">
-                    <p className="text-[11px] text-zinc-600 font-mono">+{day.exercises.length - 4}</p>
+                    <p className="text-[11px] text-zinc-600 font-mono">+{(day.exercises.length + (customExercisesByDay[day.dayNumber]?.length ?? 0)) - 4}</p>
                   </div>
                 )}
               </div>

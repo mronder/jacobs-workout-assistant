@@ -9,6 +9,9 @@ export interface CustomExercise {
   exerciseName: string;
   sets: number;
   position: number;
+  targetReps?: string;
+  restPeriod?: string;
+  expertAdvice?: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -37,12 +40,15 @@ export async function addCustomExercise(
   dayNumber: number,
   exerciseName: string,
   sets: number = 3,
+  targetReps?: string,
+  restPeriod?: string,
+  expertAdvice?: string,
 ): Promise<CustomExercise> {
   const res = await fetch('/api/custom-exercises', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'same-origin',
-    body: JSON.stringify({ planId, dayNumber, exerciseName, sets }),
+    body: JSON.stringify({ planId, dayNumber, exerciseName, sets, targetReps, restPeriod, expertAdvice }),
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({ error: 'Failed to add exercise' }));

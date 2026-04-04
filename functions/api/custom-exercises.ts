@@ -41,13 +41,13 @@ async function handleGet(
   let binds: unknown[];
 
   if (dayNumber) {
-    query = `SELECT id, day_number, exercise_name, sets, position
+    query = `SELECT id, day_number, exercise_name, sets, position, target_reps, rest_period, expert_advice
              FROM custom_exercises
              WHERE user_id = ? AND plan_id = ? AND day_number = ?
              ORDER BY position, created_at`;
     binds = [userId, planId, Number(dayNumber)];
   } else {
-    query = `SELECT id, day_number, exercise_name, sets, position
+    query = `SELECT id, day_number, exercise_name, sets, position, target_reps, rest_period, expert_advice
              FROM custom_exercises
              WHERE user_id = ? AND plan_id = ?
              ORDER BY day_number, position, created_at`;
@@ -63,6 +63,9 @@ async function handleGet(
       exercise_name: string;
       sets: number;
       position: number;
+      target_reps: string | null;
+      rest_period: string | null;
+      expert_advice: string | null;
     }>();
 
   const exercises = result.results.map((r) => ({
@@ -71,6 +74,9 @@ async function handleGet(
     exerciseName: r.exercise_name,
     sets: r.sets,
     position: r.position,
+    targetReps: r.target_reps ?? undefined,
+    restPeriod: r.rest_period ?? undefined,
+    expertAdvice: r.expert_advice ?? undefined,
   }));
 
   return new Response(JSON.stringify(exercises), { status: 200, headers });
@@ -90,9 +96,12 @@ async function handlePost(
     dayNumber: number;
     exerciseName: string;
     sets?: number;
+    targetReps?: string;
+    restPeriod?: string;
+    expertAdvice?: string;
   };
 
-  const { planId, dayNumber, exerciseName, sets } = body;
+  const { planId, dayNumber, exerciseName, sets, targetReps, restPeriod, expertAdvice } = body;
 
   if (!planId || typeof dayNumber !== 'number' || !exerciseName?.trim()) {
     return new Response(JSON.stringify({ error: 'planId, dayNumber, and exerciseName are required' }), {
@@ -130,14 +139,14 @@ async function handlePost(
 
   await db
     .prepare(
-      `INSERT INTO custom_exercises (id, user_id, plan_id, day_number, exercise_name, sets, position)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO custom_exercises (id, user_id, plan_id, day_number, exercise_name, sets, position, target_reps, rest_period, expert_advice)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-    .bind(id, userId, planId, dayNumber, exerciseName.trim(), sets ?? 3, position)
+    .bind(id, userId, planId, dayNumber, exerciseName.trim(), sets ?? 3, position, targetReps ?? null, restPeriod ?? null, expertAdvice ?? null)
     .run();
 
   return new Response(
-    JSON.stringify({ id, dayNumber, exerciseName: exerciseName.trim(), sets: sets ?? 3, position }),
+    JSON.stringify({ id, dayNumber, exerciseName: exerciseName.trim(), sets: sets ?? 3, position, targetReps, restPeriod, expertAdvice }),
     { status: 201, headers },
   );
 }
