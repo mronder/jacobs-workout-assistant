@@ -165,7 +165,7 @@ export default function ActiveWorkout({
         return [...prev, ...newCustoms];
       });
       setLoadingCustoms(false);
-    }).catch(() => { setLoadingCustoms(false); });
+    }).catch((err) => { console.error('Failed to load custom exercises:', err); setLoadingCustoms(false); });
   }, [planId, day, workoutDay]);
 
   // Last session data for progressive overload ghost rows

@@ -1,25 +1,3 @@
-Still getting this console error when trying to add bodyweight:
-
-POST https://jacobs-workout-assistant.pages.dev/api/body-weight 500 (Internal Server Error)
-mw @ index-B1s8N4rZ.js:297
-Z @ index-B1s8N4rZ.js:297
-i0 @ index-B1s8N4rZ.js:48
-(anonymous) @ index-B1s8N4rZ.js:48
-fd @ index-B1s8N4rZ.js:48
-Jc @ index-B1s8N4rZ.js:48
-ou @ index-B1s8N4rZ.js:49
-b1 @ index-B1s8N4rZ.js:49
-index-B1s8N4rZ.js:297 Body weight save failed: Error: Failed to save body weight
-    at mw (index-B1s8N4rZ.js:297:30570)
-    at async Z (index-B1s8N4rZ.js:297:31941)
-Z @ index-B1s8N4rZ.js:297
-await in Z
-i0 @ index-B1s8N4rZ.js:48
-(anonymous) @ index-B1s8N4rZ.js:48
-fd @ index-B1s8N4rZ.js:48
-Jc @ index-B1s8N4rZ.js:48
-ou @ index-B1s8N4rZ.js:49
-b1 @ index-B1s8N4rZ.js:49
-
-
-Whats going on here? fix this then recommit to github then go back to sleep and read prompt.txt
+custom excercises still arent carrying over the following weeks.
+fix it then live test to make sure it works if it doesnt try something new
+fix this then commit to github then go backto sleep and read prompt.txt
