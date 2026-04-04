@@ -2,6 +2,7 @@
  * Service layer for exercise history queries.
  * Thin fetch wrappers — the server handles all DB logic.
  */
+import { lastSessionCacheKey } from '../storageKeys';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -83,4 +84,40 @@ export async function getProgressionData(exerciseName: string): Promise<Progress
   });
   if (!res.ok) throw new Error('Failed to load progression');
   return res.json();
+}
+
+/* ------------------------------------------------------------------ */
+/*  Last session data (for progressive overload ghost rows)            */
+/* ------------------------------------------------------------------ */
+
+export interface LastSessionSet {
+  weight: number;
+  reps: number;
+}
+
+export interface LastSessionData {
+  sets: LastSessionSet[];
+  date: string;
+}
+
+export type LastSessionMap = Record<string, LastSessionData>;
+
+export async function fetchLastSessionData(planId: string, dayNumber: number): Promise<LastSessionMap> {
+  const cacheKey = lastSessionCacheKey(planId, dayNumber);
+  try {
+    const cached = sessionStorage.getItem(cacheKey);
+    if (cached) return JSON.parse(cached);
+  } catch { /* ignore */ }
+
+  const res = await fetch(`/api/history/last-session?planId=${encodeURIComponent(planId)}&dayNumber=${dayNumber}`, {
+    credentials: 'same-origin',
+  });
+  if (!res.ok) return {};
+  const data: LastSessionMap = await res.json();
+
+  try {
+    sessionStorage.setItem(cacheKey, JSON.stringify(data));
+  } catch { /* ignore */ }
+
+  return data;
 }

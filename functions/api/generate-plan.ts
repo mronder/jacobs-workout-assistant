@@ -397,6 +397,48 @@ function buildProgressiveWeeks(days: PlanDay[]): PlanWeek[] {
   }));
 }
 
+/** Build mobility/session duration clause for the day prompt */
+function buildMobilityClause(
+  dayFocus: string,
+  mobilityAreas?: string[] | null,
+  sessionDuration?: number | null,
+): string {
+  const parts: string[] = [];
+
+  if (sessionDuration && sessionDuration < 50) {
+    parts.push('\nSESSION CONSTRAINT: The client has limited time (under 50 minutes). Keep total exercise count to 5 and skip warm-up mobility drills — the client will self-warm-up with lighter sets.');
+    return parts.join('');
+  }
+
+  if (mobilityAreas && mobilityAreas.length > 0) {
+    const areaNames = mobilityAreas.join(', ');
+    parts.push(`\nMOBILITY: The client reports tightness in: ${areaNames}. Include 1-2 dynamic warm-up mobility drills targeting these areas as the first exercises of the day (before the main lifts). Keep warm-up drills to 2-3 minutes total. Mark these exercises clearly in the description with "[Warm-Up]" prefix.`);
+
+    if (sessionDuration && sessionDuration >= 60) {
+      parts.push(` Also include a 1-2 exercise cool-down block at the end with static stretches for ${areaNames} (30s holds each). Mark these with "[Cool-Down]" prefix.`);
+    }
+  } else {
+    // Smart defaults based on day focus
+    const focus = dayFocus.toLowerCase();
+    let defaultAreas = '';
+    if (focus.includes('push') || focus.includes('chest') || focus.includes('shoulder')) {
+      defaultAreas = 'shoulders and thoracic spine';
+    } else if (focus.includes('pull') || focus.includes('back')) {
+      defaultAreas = 'thoracic spine and scapulae';
+    } else if (focus.includes('leg') || focus.includes('lower') || focus.includes('quad') || focus.includes('hamstring') || focus.includes('glute')) {
+      defaultAreas = 'hips and ankles';
+    } else if (focus.includes('full')) {
+      defaultAreas = 'hips and shoulders';
+    }
+
+    if (defaultAreas && (!sessionDuration || sessionDuration >= 50)) {
+      parts.push(`\nMOBILITY (default): Include 1 quick dynamic warm-up drill targeting ${defaultAreas} as the first exercise. Keep it under 2 minutes. Mark it with "[Warm-Up]" prefix.`);
+    }
+  }
+
+  return parts.join('');
+}
+
 /** Per-day prompt — generates one day's exercises only */
 function buildDayPrompt(
   dayNumber: number,
@@ -406,16 +448,29 @@ function buildDayPrompt(
   level: string,
   splitName: string,
   secondaryGoal: string | null,
+  previousExercises?: string[] | null,
+  mobilityAreas?: string[] | null,
+  sessionDuration?: number | null,
 ): string {
   const goalText = secondaryGoal
     ? `${goal} (primary goal) with a secondary focus on ${secondaryGoal}`
     : goal;
   const supersetRule = buildSupersetRule(dayNumber, daysPerWeek, level);
 
+  const progressionClause = previousExercises && previousExercises.length > 0
+    ? `
+PROGRESSION CONTEXT:
+The client just completed a 4-week cycle with these exercises on this day: ${previousExercises.join(', ')}.
+- Keep approximately 60% of those exercises (the compound/core lifts).
+- Rotate approximately 40% with fresh alternatives to drive new stimuli.
+- For kept exercises, suggest slightly harder rep ranges or an extra set compared to typical programming.
+`
+    : '';
+
   return `You are an elite personal trainer. Create day ${dayNumber} of a ${daysPerWeek}-day "${splitName}" split for a ${level} individual whose goal is ${goalText}.
 
 This day's focus: ${dayFocus}
-
+${progressionClause}
 RULES:
 1. Each day MUST have a MINIMUM of 5 exercises and a MAXIMUM of 8. A superset pair counts as 2 exercises. Vary the exercise count across days — NOT every day should have the same number. Tailor the count to the muscle group, day focus, and training goals. For example, a Legs day might have 7-8 exercises while an Arms day might have 5-6.
 2. 2 alternatives per exercise, each with a YouTube search query and 1-sentence expert advice.
@@ -425,45 +480,164 @@ RULES:
 6. description = 1-2 sentences explaining what muscle areas/sections are targeted and why. For example for a chest day: "Focus on upper, mid, and lower pec development with heavy compounds for thickness and flyes for width." Be specific about anatomy.
 7. ${supersetRule}${secondaryGoal ? `
 8. Where appropriate, incorporate exercise selection, rep ranges, or rest periods that also serve the secondary goal of ${secondaryGoal}, while still obeying the superset limits above.` : ''}
-${secondaryGoal ? '9' : '8'}. Return dayNumber as ${dayNumber}.`;
+${secondaryGoal ? '9' : '8'}. Return dayNumber as ${dayNumber}.${buildMobilityClause(dayFocus, mobilityAreas, sessionDuration)}`;
 }
 
-/** Pick the canonical split and day focuses for a given frequency */
-function getSplitConfig(daysPerWeek: number): { splitName: string; dayFocuses: string[] } {
-  switch (daysPerWeek) {
-    case 3:
-      return {
-        splitName: 'Push/Pull/Legs',
-        dayFocuses: ['Push (Chest, Shoulders, Triceps)', 'Pull (Back, Biceps, Rear Delts)', 'Legs (Quads, Hamstrings, Glutes, Calves)'],
-      };
-    case 4:
-      return {
-        splitName: '4 Day Bro Split',
-        dayFocuses: ['Chest & Triceps', 'Back & Biceps', 'Shoulders & Abs', 'Legs'],
-      };
-    case 5:
-      return {
-        splitName: 'Classic 5 Day Bro Split',
-        dayFocuses: ['Chest', 'Back', 'Shoulders', 'Legs', 'Arms (Biceps & Triceps)'],
-      };
-    case 6:
-      return {
-        splitName: 'Arnold Split',
-        dayFocuses: [
-          'Chest & Back A',
-          'Shoulders & Arms A',
-          'Legs A',
-          'Chest & Back B',
-          'Shoulders & Arms B',
-          'Legs B',
-        ],
-      };
-    default:
-      return {
-        splitName: 'Full Body',
-        dayFocuses: Array.from({ length: daysPerWeek }, (_, i) => `Full Body Day ${i + 1}`),
-      };
+/** All available splits for each day count */
+type SplitOption = { splitName: string; dayFocuses: string[] };
+
+const SPLIT_OPTIONS: Record<number, Record<string, SplitOption>> = {
+  1: {
+    full_body: {
+      splitName: 'Full Body',
+      dayFocuses: ['Full Body (Compounds Focus)'],
+    },
+  },
+  2: {
+    upper_lower: {
+      splitName: 'Upper/Lower',
+      dayFocuses: ['Upper Body (Chest, Back, Shoulders, Arms)', 'Lower Body (Quads, Hamstrings, Glutes, Calves)'],
+    },
+    full_body: {
+      splitName: 'Full Body (×2)',
+      dayFocuses: ['Full Body Day 1 (Strength)', 'Full Body Day 2 (Hypertrophy)'],
+    },
+  },
+  3: {
+    ppl: {
+      splitName: 'Push/Pull/Legs',
+      dayFocuses: ['Push (Chest, Shoulders, Triceps)', 'Pull (Back, Biceps, Rear Delts)', 'Legs (Quads, Hamstrings, Glutes, Calves)'],
+    },
+    full_body: {
+      splitName: 'Full Body',
+      dayFocuses: ['Full Body Day 1', 'Full Body Day 2', 'Full Body Day 3'],
+    },
+    upper_lower_full: {
+      splitName: 'Upper/Lower + Full Body',
+      dayFocuses: ['Upper Body (Chest, Back, Shoulders, Arms)', 'Lower Body (Quads, Hamstrings, Glutes, Calves)', 'Full Body'],
+    },
+  },
+  4: {
+    upper_lower: {
+      splitName: 'Upper/Lower (×2)',
+      dayFocuses: ['Upper Body A (Strength)', 'Lower Body A (Strength)', 'Upper Body B (Hypertrophy)', 'Lower Body B (Hypertrophy)'],
+    },
+    bro_split: {
+      splitName: '4 Day Bro Split',
+      dayFocuses: ['Chest & Triceps', 'Back & Biceps', 'Shoulders & Abs', 'Legs'],
+    },
+    ppl_full: {
+      splitName: 'PPL + Full Body',
+      dayFocuses: ['Push (Chest, Shoulders, Triceps)', 'Pull (Back, Biceps, Rear Delts)', 'Legs (Quads, Hamstrings, Glutes, Calves)', 'Full Body'],
+    },
+  },
+  5: {
+    bro_split: {
+      splitName: 'Classic 5 Day Bro Split',
+      dayFocuses: ['Chest', 'Back', 'Shoulders', 'Legs', 'Arms (Biceps & Triceps)'],
+    },
+    upper_lower_ppl: {
+      splitName: 'Upper/Lower + PPL',
+      dayFocuses: ['Upper Body', 'Lower Body', 'Push (Chest, Shoulders, Triceps)', 'Pull (Back, Biceps, Rear Delts)', 'Legs (Quads, Hamstrings, Glutes, Calves)'],
+    },
+    phat: {
+      splitName: 'PHAT',
+      dayFocuses: ['Upper Power', 'Lower Power', 'Back & Shoulders Hypertrophy', 'Lower Hypertrophy', 'Chest & Arms Hypertrophy'],
+    },
+  },
+  6: {
+    ppl: {
+      splitName: 'PPL (×2)',
+      dayFocuses: [
+        'Push A (Chest-focused)',
+        'Pull A (Back-focused)',
+        'Legs A (Quad-focused)',
+        'Push B (Shoulder-focused)',
+        'Pull B (Rear Delt & Bicep-focused)',
+        'Legs B (Hamstring & Glute-focused)',
+      ],
+    },
+    arnold: {
+      splitName: 'Arnold Split',
+      dayFocuses: [
+        'Chest & Back A',
+        'Shoulders & Arms A',
+        'Legs A',
+        'Chest & Back B',
+        'Shoulders & Arms B',
+        'Legs B',
+      ],
+    },
+    ppl_upper_lower: {
+      splitName: 'PPL + Upper/Lower',
+      dayFocuses: [
+        'Push (Chest, Shoulders, Triceps)',
+        'Pull (Back, Biceps, Rear Delts)',
+        'Legs (Quads, Hamstrings, Glutes, Calves)',
+        'Upper Body',
+        'Lower Body',
+        'Full Body / Weak Points',
+      ],
+    },
+  },
+  7: {
+    ppl_plus: {
+      splitName: 'PPL + Upper/Lower + Active Recovery',
+      dayFocuses: [
+        'Push (Chest, Shoulders, Triceps)',
+        'Pull (Back, Biceps, Rear Delts)',
+        'Legs (Quads, Hamstrings, Glutes, Calves)',
+        'Upper Body (Hypertrophy)',
+        'Lower Body (Hypertrophy)',
+        'Full Body / Weak Points',
+        'Active Recovery / Mobility',
+      ],
+    },
+    bro_split: {
+      splitName: '7 Day Bro Split',
+      dayFocuses: [
+        'Chest',
+        'Back',
+        'Shoulders',
+        'Legs (Quad-focused)',
+        'Arms (Biceps & Triceps)',
+        'Legs (Hamstring & Glute-focused)',
+        'Active Recovery / Abs & Calves',
+      ],
+    },
+  },
+};
+
+/** Default split key per day count (backwards-compatible) */
+const DEFAULT_SPLITS: Record<number, string> = {
+  1: 'full_body',
+  2: 'upper_lower',
+  3: 'ppl',
+  4: 'bro_split',
+  5: 'bro_split',
+  6: 'arnold',
+  7: 'ppl_plus',
+};
+
+/** Get available split options for a given day count */
+export function getAvailableSplits(daysPerWeek: number): { key: string; splitName: string }[] {
+  const options = SPLIT_OPTIONS[daysPerWeek];
+  if (!options) return [{ key: 'full_body', splitName: 'Full Body' }];
+  return Object.entries(options).map(([key, opt]) => ({ key, splitName: opt.splitName }));
+}
+
+/** Pick the split config for a given frequency and optional split type */
+function getSplitConfig(daysPerWeek: number, splitType?: string | null): { splitName: string; dayFocuses: string[] } {
+  const options = SPLIT_OPTIONS[daysPerWeek];
+  if (!options) {
+    return {
+      splitName: 'Full Body',
+      dayFocuses: Array.from({ length: daysPerWeek }, (_, i) => `Full Body Day ${i + 1}`),
+    };
   }
+
+  const key = splitType && options[splitType] ? splitType : DEFAULT_SPLITS[daysPerWeek] || Object.keys(options)[0];
+  return options[key];
 }
 
 /* ------------------------------------------------------------------ */
@@ -490,10 +664,19 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   }
 
   try {
-    const body: { daysPerWeek?: number; goal?: string; level?: string; secondaryGoal?: string | null; noSupersets?: boolean } =
-      await context.request.json();
+    const body: {
+      daysPerWeek?: number;
+      goal?: string;
+      level?: string;
+      secondaryGoal?: string | null;
+      noSupersets?: boolean;
+      splitType?: string | null;
+      existingPlan?: { weeks: { days: { focus: string; exercises: { name: string; sets: number; reps: string }[] }[] }[] } | null;
+      mobilityAreas?: string[] | null;
+      sessionDuration?: number | null;
+    } = await context.request.json();
 
-    const { daysPerWeek, goal, level, secondaryGoal = null, noSupersets = false } = body;
+    const { daysPerWeek, goal, level, secondaryGoal = null, noSupersets = false, splitType = null, existingPlan = null, mobilityAreas = null, sessionDuration = null } = body;
 
     if (
       typeof daysPerWeek !== 'number' ||
@@ -517,7 +700,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       );
     }
 
-    const { splitName, dayFocuses } = getSplitConfig(daysPerWeek);
+    const { splitName, dayFocuses } = getSplitConfig(daysPerWeek, splitType);
 
     /* ---------- Helper: single OpenAI call ---------- */
     async function callOpenAI(
@@ -578,10 +761,16 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
     const effectiveLevel = noSupersets ? 'Beginner' : level;
 
+    // Extract previous exercises per day for progression
+    const previousExercisesByDay: (string[] | null)[] = dayFocuses.map((_, idx) => {
+      if (!existingPlan?.weeks?.[0]?.days?.[idx]) return null;
+      return existingPlan.weeks[0].days[idx].exercises.map(e => e.name);
+    });
+
     const dayPromises = dayFocuses.map((focus, idx) =>
       callOpenAI(
         sysMsg,
-        buildDayPrompt(idx + 1, focus, daysPerWeek, goal, effectiveLevel, splitName, secondaryGoal),
+        buildDayPrompt(idx + 1, focus, daysPerWeek, goal, effectiveLevel, splitName, secondaryGoal, previousExercisesByDay[idx], mobilityAreas, sessionDuration),
         daySchema,
         1500,
       ),

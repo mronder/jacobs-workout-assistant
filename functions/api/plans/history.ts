@@ -13,19 +13,20 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
 
   const result = await env.DB
     .prepare(
-      `SELECT id, plan_name, created_at, is_active
+      `SELECT id, plan_name, created_at, is_active, split_type
        FROM workout_plans
        WHERE user_id = ?
        ORDER BY created_at DESC`,
     )
     .bind(auth.userId)
-    .all<{ id: string; plan_name: string; created_at: string; is_active: number }>();
+    .all<{ id: string; plan_name: string; created_at: string; is_active: number; split_type: string | null }>();
 
   const plans = result.results.map((r) => ({
     id: r.id,
     planName: r.plan_name,
     createdAt: r.created_at,
     isActive: r.is_active === 1,
+    splitType: r.split_type ?? null,
   }));
 
   return new Response(JSON.stringify(plans), { status: 200, headers });

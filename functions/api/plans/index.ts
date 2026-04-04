@@ -27,7 +27,7 @@ async function handleGet(
 ): Promise<Response> {
   const planRow = await db
     .prepare(
-      `SELECT id, plan_name, split_description, motivational_quote, quote_author
+      `SELECT id, plan_name, split_description, motivational_quote, quote_author, split_type
        FROM workout_plans
        WHERE user_id = ? AND is_active = 1
        ORDER BY created_at DESC LIMIT 1`,
@@ -39,6 +39,7 @@ async function handleGet(
       split_description: string;
       motivational_quote: string;
       quote_author: string;
+      split_type: string | null;
     }>();
 
   if (!planRow) {
@@ -127,7 +128,7 @@ async function handleGet(
     weeks,
   };
 
-  return new Response(JSON.stringify({ plan, planId: planRow.id }), { status: 200, headers });
+  return new Response(JSON.stringify({ plan, planId: planRow.id, splitType: planRow.split_type ?? null }), { status: 200, headers });
 }
 
 /* ------------------------------------------------------------------ */
@@ -151,9 +152,10 @@ async function handlePost(
     goal: string;
     level: string;
     secondaryGoal?: string | null;
+    splitType?: string | null;
   };
 
-  const { plan, daysPerWeek, goal, level, secondaryGoal } = body;
+  const { plan, daysPerWeek, goal, level, secondaryGoal, splitType } = body;
 
   // Deactivate current active plans
   await db
@@ -165,13 +167,13 @@ async function handlePost(
   const planId = crypto.randomUUID().replace(/-/g, '');
   await db
     .prepare(
-      `INSERT INTO workout_plans (id, user_id, plan_name, split_description, motivational_quote, quote_author, days_per_week, goal, level, secondary_goal, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+      `INSERT INTO workout_plans (id, user_id, plan_name, split_description, motivational_quote, quote_author, days_per_week, goal, level, secondary_goal, split_type, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
     )
     .bind(
       planId, userId, plan.planName, plan.splitDescription,
       plan.motivationalQuote, plan.quoteAuthor, daysPerWeek, goal, level,
-      secondaryGoal ?? null,
+      secondaryGoal ?? null, splitType ?? null,
     )
     .run();
 

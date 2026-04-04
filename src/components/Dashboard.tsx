@@ -2,16 +2,19 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'motion/react';
 import { Play, CheckCircle, ChevronRight, MessageSquare } from 'lucide-react';
 import { WorkoutPlan, TrackedWorkout } from '../types';
+import { STORAGE_KEYS } from '../storageKeys';
 import { loadWeeklyNotes, saveWeeklyNote } from '../services/tracking';
+import BodyWeightCard from './BodyWeightCard';
 
 interface DashboardProps {
   plan: WorkoutPlan;
   planId: string | null;
   trackedWorkouts: TrackedWorkout[];
   onStartWorkout: (week: number, day: number) => void;
+  weightUnit?: 'lbs' | 'kg';
 }
 
-export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkout }: DashboardProps) {
+export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkout, weightUnit = 'lbs' }: DashboardProps) {
   const [activeWeek, setActiveWeek] = useState(() => {
     // Default to the most recent workout's week, or week 1
     if (trackedWorkouts.length > 0) {
@@ -31,7 +34,7 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
   const [resumeSession, setResumeSession] = useState<{ week: number; day: number } | null>(null);
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('jw_active_session');
+      const saved = localStorage.getItem(STORAGE_KEYS.activeSession);
       if (saved) {
         const session = JSON.parse(saved);
         if (session.week && session.day && session.exercises?.length) {
@@ -112,6 +115,9 @@ export default function Dashboard({ plan, planId, trackedWorkouts, onStartWorkou
           </motion.button>
         </motion.div>
       )}
+
+      {/* Bodyweight Tracking Card */}
+      <BodyWeightCard planId={planId} defaultUnit={weightUnit} />
 
       <div className="relative overflow-hidden rounded-[30px] border border-white/8 bg-[linear-gradient(145deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))] p-6 shadow-card">
         <div className="absolute -top-20 right-[-40px] w-60 h-60 bg-orange-500/12 rounded-full blur-3xl pointer-events-none" />

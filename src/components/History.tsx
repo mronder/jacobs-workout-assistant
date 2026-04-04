@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, ChevronRight, Trophy, ArrowLeft, Dumbbell, Calendar, TrendingUp } from 'lucide-react';
+import { Search, ChevronRight, Trophy, ArrowLeft, Dumbbell, Calendar, TrendingUp, RefreshCw } from 'lucide-react';
 import {
   getDistinctExercises,
   getExerciseHistory,
@@ -13,22 +13,31 @@ import {
 } from '../services/history';
 import ProgressChart from './ProgressChart';
 
-export default function History() {
+export default function History({ weightUnit = 'lbs' }: { weightUnit?: string }) {
   const [exercises, setExercises] = useState<ExerciseSummary[]>([]);
   const [filtered, setFiltered] = useState<ExerciseSummary[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedExercise, setSelectedExercise] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadExercises = () => {
     setLoading(true);
+    setError(null);
     getDistinctExercises()
       .then((data) => {
         setExercises(data);
         setFiltered(data);
       })
-      .catch(console.error)
+      .catch((err) => {
+        console.error(err);
+        setError('Failed to load exercise history');
+      })
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadExercises();
   }, []);
 
   useEffect(() => {
@@ -56,6 +65,27 @@ export default function History() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center gap-4">
+        <div className="w-14 h-14 rounded-2xl bg-red-500/15 flex items-center justify-center">
+          <Dumbbell className="w-7 h-7 text-red-400" />
+        </div>
+        <p className="text-zinc-300 font-bold text-lg">{error}</p>
+        <p className="text-zinc-500 text-sm max-w-[260px] leading-relaxed">
+          Check your connection and try again.
+        </p>
+        <button
+          onClick={loadExercises}
+          className="flex items-center gap-2 px-4 py-2 bg-surface-1 border border-border rounded-xl text-sm text-zinc-300 hover:bg-surface-3 transition-colors cursor-pointer"
+        >
+          <RefreshCw className="w-4 h-4" />
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   return (
     <AnimatePresence mode="wait">
       {selectedExercise ? (
@@ -63,6 +93,7 @@ export default function History() {
           key="detail"
           exerciseName={selectedExercise}
           onBack={() => setSelectedExercise(null)}
+          weightUnit={weightUnit}
         />
       ) : (
         <motion.div
@@ -147,17 +178,21 @@ export default function History() {
 function ExerciseDetail({
   exerciseName,
   onBack,
+  weightUnit = 'lbs',
 }: {
   exerciseName: string;
   onBack: () => void;
+  weightUnit?: string;
 }) {
   const [sessions, setSessions] = useState<HistorySession[]>([]);
   const [pr, setPR] = useState<PersonalRecord | null>(null);
   const [chartData, setChartData] = useState<ProgressionPoint[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadData = () => {
     setLoading(true);
+    setError(null);
     Promise.all([
       getExerciseHistory(exerciseName),
       getExercisePR(exerciseName),
@@ -168,8 +203,15 @@ function ExerciseDetail({
         setPR(prData);
         setChartData(prog);
       })
-      .catch(console.error)
+      .catch((err) => {
+        console.error(err);
+        setError('Failed to load exercise details');
+      })
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadData();
   }, [exerciseName]);
 
   if (loading) {
@@ -187,6 +229,29 @@ function ExerciseDetail({
             <div className="h-3 bg-surface-3 rounded w-2/3" />
           </div>
         ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div>
+        <button
+          onClick={onBack}
+          className="flex items-center gap-1.5 text-zinc-400 hover:text-white text-sm mb-4 transition-colors cursor-pointer"
+        >
+          <ArrowLeft className="w-4 h-4" /> All Exercises
+        </button>
+        <div className="flex flex-col items-center justify-center py-12 text-center gap-4">
+          <p className="text-zinc-300 font-bold">{error}</p>
+          <button
+            onClick={loadData}
+            className="flex items-center gap-2 px-4 py-2 bg-surface-1 border border-border rounded-xl text-sm text-zinc-300 hover:bg-surface-3 transition-colors cursor-pointer"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
@@ -217,7 +282,7 @@ function ExerciseDetail({
           <div>
             <p className="text-xs text-orange-400 font-medium uppercase tracking-wider mb-0.5">Personal Record</p>
             <p className="text-white font-bold text-sm">
-              {pr.maxWeight} lbs
+              {pr.maxWeight} {weightUnit}
               {pr.maxVolume > 0 && (
                 <span className="text-zinc-400 font-normal">
                   {' '} · Best set: {pr.maxVolumeWeight} × {pr.maxVolumeReps}
@@ -230,7 +295,7 @@ function ExerciseDetail({
 
       {/* Progression Chart */}
       <div className="mb-4">
-        <ProgressChart data={chartData} />
+        <ProgressChart data={chartData} weightUnit={weightUnit} />
       </div>
 
       {/* Session List */}
@@ -274,7 +339,7 @@ function ExerciseDetail({
                     }`}
                   >
                     <span className="text-zinc-500">{s.setNumber}</span>
-                    <span className="text-center font-medium">{s.weight} lbs</span>
+                    <span className="text-center font-medium">{s.weight} {weightUnit}</span>
                     <span className="text-right">{s.reps}</span>
                   </div>
                 ))}

@@ -2,13 +2,14 @@ import type { ProgressionPoint } from '../services/history';
 
 interface ProgressChartProps {
   data: ProgressionPoint[];
+  weightUnit?: string;
 }
 
 /**
  * Custom SVG line chart for exercise weight progression.
  * Zero dependencies — just SVG.
  */
-export default function ProgressChart({ data }: ProgressChartProps) {
+export default function ProgressChart({ data, weightUnit = 'lbs' }: ProgressChartProps) {
   if (data.length < 2) {
     return (
       <div className="bg-surface-1 rounded-xl p-6 text-center shadow-card">

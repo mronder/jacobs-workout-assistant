@@ -15,12 +15,13 @@ export async function savePlan(
   goal: string,
   level: string,
   secondaryGoal: string | null = null,
+  splitType: string | null = null,
 ): Promise<string> {
   const res = await fetch('/api/plans', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'same-origin',
-    body: JSON.stringify({ plan, daysPerWeek, goal, level, secondaryGoal }),
+    body: JSON.stringify({ plan, daysPerWeek, goal, level, secondaryGoal, splitType }),
   });
   if (!res.ok) throw new Error('Failed to save plan');
   const data = (await res.json()) as { planId: string };
@@ -31,10 +32,10 @@ export async function savePlan(
 /*  Load the active plan                                               */
 /* ------------------------------------------------------------------ */
 
-export async function loadActivePlan(): Promise<{ plan: WorkoutPlan; planId: string } | null> {
+export async function loadActivePlan(): Promise<{ plan: WorkoutPlan; planId: string; splitType: string | null } | null> {
   const res = await fetch('/api/plans', { credentials: 'same-origin' });
   if (!res.ok) throw new Error('Failed to load plan');
-  const data = (await res.json()) as { plan: WorkoutPlan; planId: string } | null;
+  const data = (await res.json()) as { plan: WorkoutPlan; planId: string; splitType: string | null } | null;
   return data;
 }
 
@@ -43,7 +44,7 @@ export async function loadActivePlan(): Promise<{ plan: WorkoutPlan; planId: str
 /* ------------------------------------------------------------------ */
 
 export async function loadAllPlans(): Promise<
-  Array<{ id: string; planName: string; createdAt: string; isActive: boolean }>
+  Array<{ id: string; planName: string; createdAt: string; isActive: boolean; splitType: string | null }>
 > {
   const res = await fetch('/api/plans/history', { credentials: 'same-origin' });
   if (!res.ok) throw new Error('Failed to load plans');

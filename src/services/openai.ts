@@ -14,11 +14,14 @@ async function callViaFunction(
   level: string,
   secondaryGoal: string | null,
   noSupersets: boolean = false,
+  splitType: string | null = null,
+  mobilityAreas?: string[],
+  sessionDuration?: number,
 ): Promise<WorkoutPlan> {
   const response = await fetch('/api/generate-plan', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ daysPerWeek, goal, level, secondaryGoal, noSupersets }),
+    body: JSON.stringify({ daysPerWeek, goal, level, secondaryGoal, noSupersets, splitType, mobilityAreas, sessionDuration }),
   });
 
   if (!response.ok) {
@@ -40,6 +43,9 @@ export async function generateWorkoutPlan(
   level: string,
   secondaryGoal: string | null = null,
   noSupersets: boolean = false,
+  splitType: string | null = null,
+  mobilityAreas?: string[],
+  sessionDuration?: number,
 ): Promise<WorkoutPlan> {
-  return callViaFunction(daysPerWeek, goal, level, secondaryGoal, noSupersets);
+  return callViaFunction(daysPerWeek, goal, level, secondaryGoal, noSupersets, splitType, mobilityAreas, sessionDuration);
 }

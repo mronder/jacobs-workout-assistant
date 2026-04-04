@@ -5,9 +5,14 @@
 import type { Env } from '../_shared/types';
 import { verifyPassword } from '../_shared/crypto';
 import { generateSessionId, sessionExpiresAt, getSessionCookie } from '../_shared/session';
+import { checkRateLimit } from '../_shared/rateLimit';
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const headers = { 'Content-Type': 'application/json' };
+
+  // Rate limit: 10 attempts per 15 minutes per IP
+  const rateLimited = checkRateLimit(request, 10, 15 * 60 * 1000);
+  if (rateLimited) return rateLimited;
 
   try {
     const body: { email?: string; password?: string } = await request.json();

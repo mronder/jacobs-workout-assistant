@@ -2,6 +2,10 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Check, PlayCircle, Info, ChevronDown, ChevronUp, Plus, Timer, ArrowLeft, MessageSquare, MoreVertical, Trophy } from 'lucide-react';
 import { WorkoutPlan, TrackedWorkout, TrackedExercise } from '../types';
+import { STORAGE_KEYS } from '../storageKeys';
+import { loadCustomExercises, addCustomExercise as apiAddCustomExercise, removeCustomExercise as apiRemoveCustomExercise } from '../services/customExercises';
+import { fetchLastSessionData, type LastSessionMap } from '../services/history';
+import { getSuggestion, type ProgressionSuggestion } from '../utils/progression';
 
 /** Parse rest strings like '60s', '90s', '2 min', '2-3 min', '60-90s' into seconds (lower bound). */
 function parseRestSeconds(rest: string): number {
@@ -30,6 +34,7 @@ function cleanSupersetText(text: string, hasPartner: boolean): string {
 
 interface ActiveWorkoutProps {
   plan: WorkoutPlan;
+  planId: string | null;
   week: number;
   day: number;
   existingWorkout?: TrackedWorkout;
@@ -40,6 +45,7 @@ interface ActiveWorkoutProps {
 
 export default function ActiveWorkout({
   plan,
+  planId,
   week,
   day,
   existingWorkout,
@@ -69,7 +75,7 @@ export default function ActiveWorkout({
 
     // Recover in-progress session from localStorage
     try {
-      const saved = localStorage.getItem('jw_active_session');
+      const saved = localStorage.getItem(STORAGE_KEYS.activeSession);
       if (saved) {
         const session = JSON.parse(saved);
         if (session.week === week && session.day === day && session.exercises?.length && workoutDay) {
@@ -105,7 +111,7 @@ export default function ActiveWorkout({
   // Day-level note
   const [workoutNote, setWorkoutNote] = useState<string>(() => {
     try {
-      const saved = localStorage.getItem('jw_active_session');
+      const saved = localStorage.getItem(STORAGE_KEYS.activeSession);
       if (saved) {
         const session = JSON.parse(saved);
         if (session.week === week && session.day === day) {
@@ -121,6 +127,38 @@ export default function ActiveWorkout({
   const [showSwap, setShowSwap] = useState<Record<number, boolean>>({});
   const [customExerciseName, setCustomExerciseName] = useState('');
   const exerciseRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  // Load persisted custom exercises from the server and merge into trackedData
+  useEffect(() => {
+    if (!planId) return;
+    loadCustomExercises(planId, day).then((customs) => {
+      if (customs.length === 0) return;
+      setTrackedData(prev => {
+        const planLen = workoutDay?.exercises.length ?? 0;
+        const existingCustomNames = new Set(prev.slice(planLen).map(e => e.exerciseName));
+        const newCustoms = customs
+          .filter(c => !existingCustomNames.has(c.exerciseName))
+          .map(c => ({
+            exerciseName: c.exerciseName,
+            weightUnit: 'lbs' as const,
+            sets: Array.from({ length: c.sets }).map(() => ({
+              weight: 0,
+              reps: 0,
+              completed: false,
+            })),
+          }));
+        if (newCustoms.length === 0) return prev;
+        return [...prev, ...newCustoms];
+      });
+    }).catch(() => { /* ignore — custom exercises are optional */ });
+  }, [planId, day, workoutDay]);
+
+  // Last session data for progressive overload ghost rows
+  const [lastSessionData, setLastSessionData] = useState<LastSessionMap>({});
+  useEffect(() => {
+    if (!planId) return;
+    fetchLastSessionData(planId, day).then(setLastSessionData).catch(() => {});
+  }, [planId, day]);
 
   // Rest timer state
   const [activeTimer, setActiveTimer] = useState<{
@@ -147,7 +185,7 @@ export default function ActiveWorkout({
   // Auto-save to localStorage on every change (survives phone lock / app close)
   useEffect(() => {
     localStorage.setItem(
-      'jw_active_session',
+      STORAGE_KEYS.activeSession,
       JSON.stringify({ week, day, exercises: trackedData, workoutNote, lastSaved: Date.now() })
     );
   }, [trackedData, workoutNote, week, day]);
@@ -174,16 +212,69 @@ export default function ActiveWorkout({
     };
   }, [trackedData, workoutNote, debouncedServerSave]);
 
+  // Build beacon payload for reliable save-on-close
+  const buildBeaconPayload = useCallback(() => {
+    if (!planId) return null;
+    return JSON.stringify({
+      planId,
+      workout: {
+        weekNumber: week,
+        dayNumber: day,
+        date: new Date().toISOString(),
+        exercises: trackedDataRef.current,
+        completed: false,
+        note: workoutNoteRef.current || undefined,
+      },
+    });
+  }, [planId, week, day]);
+
   // Also save to server when app goes to background
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
         if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+        // Use sendBeacon for reliable save when tab is being hidden/killed
+        const payload = buildBeaconPayload();
+        if (payload) {
+          const blob = new Blob([payload], { type: 'application/json' });
+          navigator.sendBeacon('/api/tracking', blob);
+        } else {
+          onAutoSave?.(trackedDataRef.current, workoutNoteRef.current);
+        }
+      }
+    };
+    const handleBeforeUnload = () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      const payload = buildBeaconPayload();
+      if (payload) {
+        const blob = new Blob([payload], { type: 'application/json' });
+        navigator.sendBeacon('/api/tracking', blob);
+      } else {
         onAutoSave?.(trackedDataRef.current, workoutNoteRef.current);
       }
     };
+    const handlePageHide = (e: PageTransitionEvent) => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      const payload = buildBeaconPayload();
+      if (payload) {
+        const blob = new Blob([payload], { type: 'application/json' });
+        navigator.sendBeacon('/api/tracking', blob);
+      }
+    };
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('pagehide', handlePageHide);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handlePageHide);
+    };
+  }, [onAutoSave, buildBeaconPayload]);
+
+  // Immediate flush — bypasses the 2s debounce for critical changes
+  const flushSaveImmediately = useCallback(() => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    onAutoSave?.(trackedDataRef.current, workoutNoteRef.current);
   }, [onAutoSave]);
 
   // Rest timer countdown using elapsed-time calculation (survives phone sleep)
@@ -276,19 +367,75 @@ export default function ActiveWorkout({
     setTrackedData(newData);
   };
 
-  const addCustomExercise = () => {
+  const addCustomExercise = async () => {
     const name = customExerciseName.trim();
     if (!name) return;
-    setTrackedData(prev => [...prev, {
-      exerciseName: name,
-      weightUnit: 'lbs',
-      sets: [{ weight: 0, reps: 0, completed: false }, { weight: 0, reps: 0, completed: false }, { weight: 0, reps: 0, completed: false }],
-    }]);
     setCustomExerciseName('');
+
+    // Start with sensible defaults immediately so UI is responsive
+    const defaultSets = 3;
+    const defaultEntry: TrackedExercise = {
+      exerciseName: name,
+      weightUnit: 'lbs' as const,
+      sets: Array.from({ length: defaultSets }, () => ({ weight: 0, reps: 0, completed: false })),
+    };
+
+    // Add with defaults first
+    setTrackedData(prev => {
+      const updated = [...prev, defaultEntry];
+      setTimeout(() => flushSaveImmediately(), 0);
+      return updated;
+    });
+
+    // Fire AI suggestion in background — update sets/reps count if they come back
+    try {
+      const res = await fetch('/api/suggest-exercise', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ exerciseName: name }),
+      });
+      if (res.ok) {
+        const suggestion: { sets: number; reps: string; rest: string; expertAdvice: string } = await res.json();
+        // Update the exercise's set count if AI suggests different
+        if (suggestion.sets && suggestion.sets !== defaultSets) {
+          setTrackedData(prev => {
+            const idx = prev.findIndex(e => e.exerciseName === name && e.sets.length === defaultSets);
+            if (idx < 0) return prev;
+            const updated = [...prev];
+            updated[idx] = {
+              ...updated[idx],
+              sets: Array.from({ length: suggestion.sets }, () => ({ weight: 0, reps: 0, completed: false })),
+            };
+            setTimeout(() => flushSaveImmediately(), 0);
+            return updated;
+          });
+        }
+      }
+    } catch {
+      // Ignore — defaults are already applied
+    }
+
+    // Also persist to the custom exercises table so it carries forward to future weeks
+    if (planId) {
+      apiAddCustomExercise(planId, day, name, defaultSets).catch(() => { /* ignore — tracked data is the source of truth */ });
+    }
   };
 
   const removeCustomExercise = (exIndex: number) => {
-    setTrackedData(prev => prev.filter((_, i) => i !== exIndex));
+    const exerciseName = trackedData[exIndex]?.exerciseName;
+    setTrackedData(prev => {
+      const updated = prev.filter((_, i) => i !== exIndex);
+      setTimeout(() => flushSaveImmediately(), 0);
+      return updated;
+    });
+    // Also remove from the custom exercises table
+    if (planId && exerciseName) {
+      loadCustomExercises(planId, day).then(customs => {
+        const match = customs.find(c => c.exerciseName === exerciseName);
+        if (match) apiRemoveCustomExercise(match.id).catch(() => {});
+      }).catch(() => {});
+    }
   };
 
   const finishWorkout = () => {
@@ -870,6 +1017,40 @@ export default function ActiveWorkout({
                       </div>
                     </div>
                   )}
+
+                  {/* Ghost Row — Previous Session Data + Progression Suggestion */}
+                  {(() => {
+                    const lastData = lastSessionData[trackedEx.exerciseName];
+                    if (!lastData || lastData.sets.length === 0) return null;
+                    const suggestion = getSuggestion(lastData.sets, ex.reps, trackedEx.exerciseName);
+                    return (
+                      <div className="mb-3 rounded-xl bg-zinc-800/40 border border-zinc-700/30 p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-medium">Previous Session</span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            suggestion.type === 'increase' ? 'bg-green-500/15 text-green-400' : 'bg-orange-500/15 text-orange-400'
+                          }`}>{suggestion.message}</span>
+                        </div>
+                        <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+                          {lastData.sets.map((s, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => {
+                                if (trackedEx.sets[i] && trackedEx.sets[i].weight === 0) {
+                                  updateSet(exIndex, i, 'weight', s.weight);
+                                }
+                              }}
+                              className="shrink-0 bg-zinc-700/30 rounded-lg px-2.5 py-1.5 text-center cursor-pointer hover:bg-zinc-700/50 transition-colors"
+                              title="Tap to pre-fill weight"
+                            >
+                              <p className="text-[11px] text-zinc-400 font-mono">{s.weight} × {s.reps}</p>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* Set Tracking (PRIMARY — shown first) */}
                   <div>

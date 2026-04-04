@@ -42,22 +42,26 @@ async function handleGet(
     .bind(userId, planId)
     .all<{ id: string; week_number: number; day_number: number; completed: number; completed_at: string | null; note: string | null }>();
 
-  // Load all sets for all these workouts
+  // Load all sets for all these workouts (batched to avoid SQLite 999-parameter limit)
   const workoutIds = workouts.results.map((w) => w.id);
   let allSets: { tracked_workout_id: string; exercise_name: string; set_number: number; weight: number; reps: number; completed: number; weight_unit: string; note: string | null }[] = [];
 
   if (workoutIds.length > 0) {
-    const placeholders = workoutIds.map(() => '?').join(',');
-    const setsResult = await db
-      .prepare(
-        `SELECT tracked_workout_id, exercise_name, set_number, weight, reps, completed, weight_unit, note
-         FROM tracked_sets
-         WHERE tracked_workout_id IN (${placeholders})
-         ORDER BY set_number`,
-      )
-      .bind(...workoutIds)
-      .all();
-    allSets = setsResult.results as typeof allSets;
+    const BATCH_SIZE = 500;
+    for (let i = 0; i < workoutIds.length; i += BATCH_SIZE) {
+      const batch = workoutIds.slice(i, i + BATCH_SIZE);
+      const placeholders = batch.map(() => '?').join(',');
+      const setsResult = await db
+        .prepare(
+          `SELECT tracked_workout_id, exercise_name, set_number, weight, reps, completed, weight_unit, note
+           FROM tracked_sets
+           WHERE tracked_workout_id IN (${placeholders})
+           ORDER BY set_number`,
+        )
+        .bind(...batch)
+        .all();
+      allSets = allSets.concat(setsResult.results as typeof allSets);
+    }
   }
 
   // Group sets by workout

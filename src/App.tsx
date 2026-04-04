@@ -6,6 +6,8 @@ import { generateWorkoutPlan } from './services/openai';
 import { useAuth } from './contexts/AuthContext';
 import { savePlan, loadActivePlan, deactivatePlan } from './services/plans';
 import { saveTrackedWorkout, loadTrackedWorkouts } from './services/tracking';
+import { generateDeloadWeek } from './utils/deload';
+import { loadPreferences } from './services/preferences';
 
 import Auth from './components/Auth';
 import Setup from './components/Setup';
@@ -13,12 +15,10 @@ import Dashboard from './components/Dashboard';
 import ActiveWorkout from './components/ActiveWorkout';
 import BottomNav from './components/BottomNav';
 import History from './components/History';
-
-const STORAGE_KEYS = {
-  plan: 'jw_plan',
-  tracked: 'jw_tracked',
-  activeSession: 'jw_active_session',
-} as const;
+import CustomPlanBuilder from './components/CustomPlanBuilder';
+import ProgramComplete from './components/ProgramComplete';
+import ErrorBoundary from './components/ErrorBoundary';
+import { STORAGE_KEYS } from './storageKeys';
 
 export default function App() {
   const { user, loading: authLoading, signOut } = useAuth();
@@ -37,8 +37,11 @@ export default function App() {
     return null;
   });
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showCustomBuilder, setShowCustomBuilder] = useState(false);
+  const [showProgramComplete, setShowProgramComplete] = useState(false);
   const [currentTab, setCurrentTab] = useState<'workouts' | 'history'>('workouts');
   const [dataLoading, setDataLoading] = useState(false);
+  const [weightUnit, setWeightUnit] = useState<'lbs' | 'kg'>('lbs');
 
   /* ---- Load data from server when user is authenticated ---- */
   const loadUserData = useCallback(async () => {
@@ -72,14 +75,17 @@ export default function App() {
   useEffect(() => {
     if (!user) return;
     loadUserData();
+    loadPreferences().then(prefs => {
+      if (prefs.defaultWeightUnit === 'kg') setWeightUnit('kg');
+    }).catch(() => {});
   }, [user, loadUserData]);
 
   /* ---- Handlers ---- */
 
-  const handleGenerate = async (days: number, goal: string, secondaryGoal: string | null, level: string, noSupersets: boolean = false) => {
+  const handleGenerate = async (days: number, goal: string, secondaryGoal: string | null, level: string, noSupersets: boolean = false, splitType: string | null = null, mobilityAreas?: string[], sessionDuration?: number) => {
     setIsGenerating(true);
     try {
-      const newPlan = await generateWorkoutPlan(days, goal, level, secondaryGoal, noSupersets);
+      const newPlan = await generateWorkoutPlan(days, goal, level, secondaryGoal, noSupersets, splitType, mobilityAreas, sessionDuration);
       setPlan(newPlan);
       setTrackedWorkouts([]);
       localStorage.setItem(STORAGE_KEYS.plan, JSON.stringify(newPlan));
@@ -88,7 +94,7 @@ export default function App() {
       // Save to server
       if (user) {
         try {
-          const id = await savePlan(newPlan, days, goal, level, secondaryGoal);
+          const id = await savePlan(newPlan, days, goal, level, secondaryGoal, splitType);
           setPlanId(id);
         } catch (err) {
           console.error('Failed to save plan:', err);
@@ -99,6 +105,24 @@ export default function App() {
       alert(`Failed to generate plan: ${message}`);
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleCustomPlanSave = async (customPlan: WorkoutPlan, splitType: string | null) => {
+    setPlan(customPlan);
+    setTrackedWorkouts([]);
+    setShowCustomBuilder(false);
+    localStorage.setItem(STORAGE_KEYS.plan, JSON.stringify(customPlan));
+    localStorage.setItem(STORAGE_KEYS.tracked, JSON.stringify([]));
+
+    if (user) {
+      try {
+        const days = customPlan.weeks[0]?.days.length || 4;
+        const id = await savePlan(customPlan, days, 'Custom', 'Intermediate', null, splitType);
+        setPlanId(id);
+      } catch (err) {
+        console.error('Failed to save custom plan:', err);
+      }
     }
   };
 
@@ -113,6 +137,15 @@ export default function App() {
     localStorage.setItem(STORAGE_KEYS.tracked, JSON.stringify(updated));
     localStorage.removeItem(STORAGE_KEYS.activeSession);
     setActiveWorkout(null);
+
+    // Check if program is complete (all weeks × all days completed)
+    if (plan && workout.completed) {
+      const totalWorkouts = plan.weeks.reduce((acc, week) => acc + week.days.length, 0);
+      const completedCount = updated.filter(tw => tw.completed).length;
+      if (completedCount >= totalWorkouts) {
+        setTimeout(() => setShowProgramComplete(true), 2000); // Delay to let celebration play
+      }
+    }
 
     // Save to server
     if (user && planId) {
@@ -159,6 +192,93 @@ export default function App() {
     localStorage.removeItem(STORAGE_KEYS.tracked);
   };
 
+  const handleProgramLoop = () => {
+    // Reset tracked workouts but keep the same plan
+    setTrackedWorkouts([]);
+    localStorage.setItem(STORAGE_KEYS.tracked, JSON.stringify([]));
+    setShowProgramComplete(false);
+  };
+
+  const handleProgramProgress = async () => {
+    if (!plan) return;
+    setShowProgramComplete(false);
+    setIsGenerating(true);
+    try {
+      // Generate a new plan seeded with the existing plan
+      const days = plan.weeks[0]?.days.length || 4;
+      const res = await fetch('/api/generate-plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          daysPerWeek: days,
+          goal: 'Progressive Overload',
+          level: 'Intermediate',
+          existingPlan: plan,
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to generate progressive plan');
+      const newPlan = await res.json() as WorkoutPlan;
+      setPlan(newPlan);
+      setTrackedWorkouts([]);
+      localStorage.setItem(STORAGE_KEYS.plan, JSON.stringify(newPlan));
+      localStorage.setItem(STORAGE_KEYS.tracked, JSON.stringify([]));
+
+      if (user) {
+        try {
+          // Deactivate old plan, save new one
+          if (planId) await deactivatePlan(planId);
+          const id = await savePlan(newPlan, days, 'Progressive Overload', 'Intermediate');
+          setPlanId(id);
+        } catch (err) {
+          console.error('Failed to save progressive plan:', err);
+        }
+      }
+    } catch (error) {
+      console.error('Progressive plan generation failed:', error);
+      alert('Failed to generate a progressive plan. Try again or start a new plan.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleProgramNewPlan = async () => {
+    setShowProgramComplete(false);
+    if (planId) {
+      try {
+        await deactivatePlan(planId);
+      } catch (err) {
+        console.error('Failed to deactivate plan:', err);
+      }
+    }
+    setPlan(null);
+    setPlanId(null);
+    setTrackedWorkouts([]);
+    localStorage.removeItem(STORAGE_KEYS.plan);
+    localStorage.removeItem(STORAGE_KEYS.tracked);
+  };
+
+  const handleProgramDeload = () => {
+    if (!plan) return;
+    setShowProgramComplete(false);
+
+    // Generate deload week locally from Week 1 data
+    const baseDays = plan.weeks[0]?.days ?? [];
+    const deloadWeek = generateDeloadWeek(baseDays, 'Hypertrophy');
+
+    // Create a temporary 1-week plan for the deload
+    const deloadPlan: WorkoutPlan = {
+      ...plan,
+      planName: `${plan.planName} — Deload`,
+      splitDescription: `Recovery week: ${plan.splitDescription}`,
+      weeks: [{ weekNumber: 1, days: deloadWeek.days }],
+    };
+
+    setPlan(deloadPlan);
+    setTrackedWorkouts([]);
+    localStorage.setItem(STORAGE_KEYS.plan, JSON.stringify(deloadPlan));
+    localStorage.setItem(STORAGE_KEYS.tracked, JSON.stringify([]));
+  };
+
   /* ---- Auth loading state ---- */
   if (authLoading) {
     return (
@@ -194,7 +314,7 @@ export default function App() {
   }
 
   /* ---- Logged in ---- */
-  const showBottomNav = !activeWorkout && !isGenerating;
+  const showBottomNav = !activeWorkout && !isGenerating && !showCustomBuilder;
 
   return (
     <div className="min-h-screen bg-ground text-zinc-100 font-sans selection:bg-orange-500/30 relative overflow-x-hidden">
@@ -250,36 +370,54 @@ export default function App() {
         ) : (
           <AnimatePresence mode="wait">
             {currentTab === 'history' ? (
-              <History key="history" />
+              <ErrorBoundary key="history-boundary" fallbackTitle="History failed to load">
+                <History key="history" weightUnit={weightUnit} />
+              </ErrorBoundary>
             ) : isGenerating ? (
               <LoadingScreen key="loading" />
+            ) : showCustomBuilder ? (
+              <ErrorBoundary key="builder-boundary" fallbackTitle="Plan builder encountered an error">
+                <CustomPlanBuilder
+                  key="custom-builder"
+                  onSave={handleCustomPlanSave}
+                  onCancel={() => setShowCustomBuilder(false)}
+                />
+              </ErrorBoundary>
             ) : !plan ? (
-              <Setup key="setup" onGenerate={handleGenerate} />
+              <ErrorBoundary key="setup-boundary" fallbackTitle="Setup encountered an error">
+                <Setup key="setup" onGenerate={handleGenerate} onCustomBuild={() => setShowCustomBuilder(true)} />
+              </ErrorBoundary>
             ) : activeWorkout ? (
-              <ActiveWorkout
-                key="active"
-                plan={plan}
-                week={activeWorkout.week}
-                day={activeWorkout.day}
-                existingWorkout={trackedWorkouts.find(
-                  (w) => w.weekNumber === activeWorkout.week && w.dayNumber === activeWorkout.day
-                )}
-                onComplete={handleCompleteWorkout}
-                onCancel={() => {
-                  // Don't delete session data — just go back to dashboard
-                  // Data is already auto-saved to localStorage and server
-                  setActiveWorkout(null);
-                }}
-                onAutoSave={handleAutoSave}
-              />
+              <ErrorBoundary key="workout-boundary" fallbackTitle="Workout tracking encountered an error">
+                <ActiveWorkout
+                  key="active"
+                  plan={plan}
+                  planId={planId}
+                  week={activeWorkout.week}
+                  day={activeWorkout.day}
+                  existingWorkout={trackedWorkouts.find(
+                    (w) => w.weekNumber === activeWorkout.week && w.dayNumber === activeWorkout.day
+                  )}
+                  onComplete={handleCompleteWorkout}
+                  onCancel={() => {
+                    // Don't delete session data — just go back to dashboard
+                    // Data is already auto-saved to localStorage and server
+                    setActiveWorkout(null);
+                  }}
+                  onAutoSave={handleAutoSave}
+                />
+              </ErrorBoundary>
             ) : (
-              <Dashboard
-                key="dashboard"
-                plan={plan}
-                planId={planId}
-                trackedWorkouts={trackedWorkouts}
-                onStartWorkout={(w, d) => setActiveWorkout({ week: w, day: d })}
-              />
+              <ErrorBoundary key="dashboard-boundary" fallbackTitle="Dashboard encountered an error">
+                <Dashboard
+                  key="dashboard"
+                  plan={plan}
+                  planId={planId}
+                  trackedWorkouts={trackedWorkouts}
+                  onStartWorkout={(w, d) => setActiveWorkout({ week: w, day: d })}
+                  weightUnit={weightUnit}
+                />
+              </ErrorBoundary>
             )}
           </AnimatePresence>
         )}
@@ -287,6 +425,17 @@ export default function App() {
 
       {/* Bottom Navigation */}
       {showBottomNav && <BottomNav currentTab={currentTab} onTabChange={setCurrentTab} />}
+
+      {/* Program Complete Modal */}
+      {showProgramComplete && plan && (
+        <ProgramComplete
+          planName={plan.planName}
+          onLoop={handleProgramLoop}
+          onProgress={handleProgramProgress}
+          onNewPlan={handleProgramNewPlan}
+          onDeload={handleProgramDeload}
+        />
+      )}
     </div>
   );
 }

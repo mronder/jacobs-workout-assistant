@@ -1,1 +1,1 @@
-commit to gh then go back to sleep and read prompt.txt
+Commit this to github then go back to sleep and read prompt.txt 
